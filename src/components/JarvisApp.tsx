@@ -12,7 +12,7 @@ import {
   type Timer,
 } from "@/lib/types";
 import { describeCountdown, formatDuration } from "@/lib/chrono";
-import { playChime, unlockAudio } from "@/lib/sound";
+import { playChime, suspendAudio, unlockAudio } from "@/lib/sound";
 import { useIsClient, usePersistentState } from "@/hooks/usePersistentState";
 import { useSpeechRecognition, useSpeechSynthesis } from "@/hooks/useSpeech";
 import { useInstall } from "@/hooks/useInstall";
@@ -228,14 +228,15 @@ export function JarvisApp() {
       if ("vibrate" in navigator) navigator.vibrate?.([300, 150, 300, 150, 300]);
       for (const t of done) {
         const lateMin = Math.floor((now - Date.parse(t.endAt!)) / 60_000);
-        const name = t.label === "Timer" ? "Ihr Timer" : `Der Timer für ${t.label}`;
-        const text =
-          lateMin >= 1
-            ? `${name} ist vor ${lateMin} ${lateMin === 1 ? "Minute" : "Minuten"} abgelaufen.`
-            : `${settings.userName ? `${settings.userName}, ` : ""}${name.charAt(0).toLowerCase() + name.slice(1)} ist abgelaufen.`;
+        const subject = t.label === "Timer" ? "Ihr Timer" : `der Timer für ${t.label}`;
+        const late = lateMin >= 1 ? ` vor ${lateMin} ${lateMin === 1 ? "Minute" : "Minuten"}` : "";
+        const sentence = `${subject} ist${late} abgelaufen.`;
+        const text = settings.userName
+          ? `${settings.userName}, ${sentence}`
+          : sentence.charAt(0).toUpperCase() + sentence.slice(1);
         pushToast("Timer abgelaufen", t.label === "Timer" ? formatDuration(t.durationMs) : t.label);
         // kurz warten, damit der Signalton zuerst erklingt
-        setTimeout(() => jarvisSays(text.charAt(0).toUpperCase() + text.slice(1)), 1200);
+        setTimeout(() => jarvisSays(text), 1200);
         if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
           const options = { body: t.label, icon: "/icon-192.png", badge: "/icon-192.png", tag: t.id };
           navigator.serviceWorker?.ready
@@ -411,6 +412,7 @@ export function JarvisApp() {
       stt.stop();
     } else {
       tts.cancel();
+      suspendAudio(); // offener Tonkanal kann auf dem iPhone das Mikrofon blockieren
       stt.start();
     }
   }, [stt, tts]);
@@ -419,7 +421,6 @@ export function JarvisApp() {
 
   const start = useCallback(
     (name: string) => {
-      unlockAudio();
       if (name && name !== settings.userName) setSettings((s) => ({ ...s, userName: name }));
       setBooted(true);
       const now = new Date();

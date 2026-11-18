@@ -183,7 +183,7 @@ export function SettingsPanel({
             )}
             <div className="status-row">
               <span>Version</span>
-              <b>1.3</b>
+              <b>1.3.1</b>
             </div>
             <div className="settings__actions">
               <button className="btn btn--ghost" onClick={onClearChat}>
