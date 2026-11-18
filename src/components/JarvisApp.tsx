@@ -5,6 +5,8 @@ import { describeWhen, formatDate, formatTime, greetingFor, parseCommand, type C
 import { DEFAULT_SETTINGS, type ChatMessage, type CoreState, type Settings, type Task } from "@/lib/types";
 import { useIsClient, usePersistentState } from "@/hooks/usePersistentState";
 import { useSpeechRecognition, useSpeechSynthesis } from "@/hooks/useSpeech";
+import { useInstall } from "@/hooks/useInstall";
+import { localAnswer } from "@/lib/ai/local";
 import { AICore, STATE_LABEL } from "./AICore";
 import { BootScreen } from "./BootScreen";
 import { ChatPanel } from "./ChatPanel";
@@ -47,6 +49,7 @@ export function JarvisApp() {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const tts = useSpeechSynthesis();
+  const installer = useInstall();
   const messagesRef = useRef(messages);
   useEffect(() => {
     messagesRef.current = messages;
@@ -132,10 +135,18 @@ export function JarvisApp() {
         pushToast("Erinnerung", t.title);
         jarvisSays(`${settings.userName ? `${settings.userName}, ` : ""}${text}.`);
         if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
-          try {
-            new Notification("JARVIS – Erinnerung", { body: t.title });
-          } catch {
-            /* manche mobilen Browser erlauben das nur als installierte App */
+          const options = { body: t.title, icon: "/icon-192.png", badge: "/icon-192.png", tag: t.id };
+          const fallback = () => {
+            try {
+              new Notification("JARVIS – Erinnerung", options);
+            } catch {
+              /* manche mobilen Browser erlauben das nur als installierte App */
+            }
+          };
+          if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then((r) => r.showNotification("JARVIS – Erinnerung", options)).catch(fallback);
+          } else {
+            fallback();
           }
         }
       }
@@ -188,6 +199,7 @@ export function JarvisApp() {
 
       setThinking(true);
       let replyId: string | null = null;
+      let unreachable = false; // Anfrage kam gar nicht beim Server an (z. B. kein Internet)
       try {
         const history = [...messagesRef.current, { role: "user" as const, text }]
           .slice(-20)
@@ -206,6 +218,9 @@ export function JarvisApp() {
               .slice(0, 30)
               .map((t) => ({ title: t.title, remindAt: t.remindAt ? describeWhen(new Date(t.remindAt), now) : undefined })),
           }),
+        }).catch((error: unknown) => {
+          unreachable = true;
+          throw error;
         });
 
         if (res.status === 401) {
@@ -240,7 +255,11 @@ export function JarvisApp() {
         else addMessage("jarvis", reply);
         say(reply);
       } catch {
-        const msg = "Verbindung zum Kernsystem unterbrochen. Bitte versuchen Sie es gleich noch einmal.";
+        // Ohne Internet antwortet das eingebaute Gehirn direkt auf dem Gerät
+        const msg =
+          unreachable && !replyId
+            ? localAnswer(text, settings.userName)
+          : "Verbindung zum Kernsystem unterbrochen. Bitte versuchen Sie es gleich noch einmal.";
         if (replyId) updateMessage(replyId, msg);
         else addMessage("jarvis", msg);
         say(msg);
@@ -432,6 +451,7 @@ export function JarvisApp() {
         settings={settings}
         voices={tts.voices}
         speechSupported={tts.supported}
+        installer={installer}
         onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))}
         onTestVoice={() =>
           tts.speak(`Hallo${settings.userName ? ` ${settings.userName}` : ""}, so klinge ich mit diesen Einstellungen.`, {

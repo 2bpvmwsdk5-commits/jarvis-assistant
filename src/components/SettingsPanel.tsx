@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ChatApiStatus, Settings } from "@/lib/types";
+import type { useInstall } from "@/hooks/useInstall";
 import { CloseIcon, VolumeIcon } from "./Icons";
 
 interface SettingsPanelProps {
@@ -9,6 +10,7 @@ interface SettingsPanelProps {
   settings: Settings;
   voices: SpeechSynthesisVoice[];
   speechSupported: boolean;
+  installer: ReturnType<typeof useInstall>;
   onChange: (patch: Partial<Settings>) => void;
   onTestVoice: () => void;
   onClearChat: () => void;
@@ -26,6 +28,7 @@ export function SettingsPanel({
   settings,
   voices,
   speechSupported,
+  installer,
   onChange,
   onTestVoice,
   onClearChat,
@@ -124,6 +127,36 @@ export function SettingsPanel({
           </fieldset>
 
           <fieldset className="settings__group">
+            <legend>App</legend>
+            {installer.standalone ? (
+              <p className="install-ok">✓ JARVIS ist als App installiert.</p>
+            ) : installer.canPrompt ? (
+              <>
+                <p className="hint">Installieren Sie JARVIS als App – mit eigenem Symbol und im Vollbild.</p>
+                <button className="btn btn--primary" onClick={installer.install}>
+                  JARVIS installieren
+                </button>
+              </>
+            ) : installer.ios ? (
+              <ol className="install-steps">
+                <li>
+                  Diese Seite in <b>Safari</b> öffnen.
+                </li>
+                <li>
+                  Unten (iPad: oben) auf <b>Teilen</b> <span aria-hidden="true">□↑</span> tippen.
+                </li>
+                <li>
+                  <b>„Zum Home-Bildschirm“</b> wählen und auf <b>„Hinzufügen“</b> tippen.
+                </li>
+              </ol>
+            ) : (
+              <p className="hint">
+                Im Browser-Menü <b>„App installieren“</b> bzw. <b>„Zum Startbildschirm hinzufügen“</b> wählen.
+              </p>
+            )}
+          </fieldset>
+
+          <fieldset className="settings__group">
             <legend>System</legend>
             <div className="status-row">
               <span>KI-Modul</span>
@@ -150,7 +183,7 @@ export function SettingsPanel({
             )}
             <div className="status-row">
               <span>Version</span>
-              <b>1.1</b>
+              <b>1.2</b>
             </div>
             <div className="settings__actions">
               <button className="btn btn--ghost" onClick={onClearChat}>

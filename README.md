@@ -3,7 +3,7 @@
 Ein futuristischer, persönlicher Assistent im Lila-Design – inspiriert von JARVIS aus Iron Man.
 Läuft im Browser auf **iPhone, iPad und Desktop**.
 
-![Version](https://img.shields.io/badge/Version-1.1-a855f7)
+![Version](https://img.shields.io/badge/Version-1.2-a855f7)
 
 ## Was JARVIS kann
 
@@ -25,6 +25,16 @@ Läuft im Browser auf **iPhone, iPad und Desktop**.
 - „Erinnere mich morgen um 8 an den Zahnarzt“
 - „Welche Aufgaben habe ich?“
 - „Wie spät ist es?“ · „Welcher Tag ist heute?“ · „Was kannst du?“
+
+## Als App installieren
+
+JARVIS lässt sich wie eine echte App installieren – mit eigenem Symbol, im Vollbild und
+auch ohne Internet startbar (Aufgaben, Erinnerungen und Uhrzeit funktionieren offline).
+
+- **iPhone / iPad:** In **Safari** öffnen → **Teilen** (□↑) → **„Zum Home-Bildschirm“** → **„Hinzufügen“**
+- **Android / Chrome / Edge:** Zahnrad → App → **„JARVIS installieren“** (oder Browser-Menü → „App installieren“)
+
+Die Anleitung steht auch in JARVIS unter Zahnrad → **App**.
 
 ## Auf dem eigenen Computer starten
 

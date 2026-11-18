@@ -10,7 +10,13 @@ export const metadata: Metadata = {
   description: "Ihr persönlicher, futuristischer KI-Assistent.",
   applicationName: "JARVIS",
   appleWebApp: { capable: true, title: "JARVIS", statusBarStyle: "black-translucent" },
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
 };
 
 export const viewport: Viewport = {

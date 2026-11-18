@@ -1348,6 +1348,34 @@ select.input option {
   color: var(--text-dim);
 }
 
+.install-ok {
+  margin: 0;
+  color: var(--lavender-soft);
+  font-size: 0.92rem;
+}
+
+.install-steps {
+  margin: 0;
+  padding-left: 1.3em;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.install-steps b,
+.hint b {
+  color: var(--lavender-soft);
+  font-weight: 500;
+}
+
+.install-steps li::marker {
+  color: var(--neon);
+  font-weight: 600;
+}
+
 .status-row {
   display: flex;
   justify-content: space-between;
