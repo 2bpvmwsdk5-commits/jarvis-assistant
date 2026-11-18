@@ -26,6 +26,7 @@ export interface Settings {
   speechPitch: number; // 0.5 – 1.5
   greetingEnabled: boolean;
   accessCode: string; // Zugangscode für die KI (falls auf dem Server festgelegt)
+  deviceAi: boolean; // experimentell: KI läuft direkt im Gerät (WebGPU)
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -36,6 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   speechPitch: 1,
   greetingEnabled: true,
   accessCode: "",
+  deviceAi: false,
 };
 
 /** Nachricht, wie sie an die Server-Schnittstelle /api/chat geschickt wird. */

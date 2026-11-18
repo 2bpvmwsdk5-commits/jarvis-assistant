@@ -17,6 +17,8 @@ import { useIsClient, usePersistentState } from "@/hooks/usePersistentState";
 import { useSpeechRecognition, useSpeechSynthesis } from "@/hooks/useSpeech";
 import { useInstall } from "@/hooks/useInstall";
 import { localAnswer } from "@/lib/ai/local";
+import { deviceChat } from "@/lib/ai/device";
+import { useDeviceAi } from "@/hooks/useDeviceAi";
 import { AICore, STATE_LABEL } from "./AICore";
 import { BootScreen } from "./BootScreen";
 import { ChatPanel } from "./ChatPanel";
@@ -41,6 +43,19 @@ interface Toast {
   id: string;
   title: string;
   text: string;
+}
+
+/** Liest eine Text-Antwort des Servers Stück für Stück. */
+async function* readTextStream(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    yield decoder.decode(value, { stream: true });
+  }
+  const rest = decoder.decode();
+  if (rest) yield rest;
 }
 
 const uid = () =>
@@ -107,6 +122,17 @@ export function JarvisApp() {
     setToasts((prev) => [...prev, { id, title, text }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 9000);
   }, []);
+
+  /* ───────────── KI im Gerät (experimentell) ───────────── */
+
+  const onDeviceAiCrash = useCallback(() => {
+    setSettings((s) => ({ ...s, deviceAi: false }));
+    pushToast(
+      "KI im Gerät ausgeschaltet",
+      "Beim letzten Laden wurde JARVIS neu gestartet – vermutlich reicht der Speicher dieses Geräts nicht.",
+    );
+  }, [setSettings, pushToast]);
+  const deviceAi = useDeviceAi(settings.deviceAi, booted, onDeviceAiCrash);
 
   /* ───────────── Aufgaben ───────────── */
 
@@ -336,47 +362,57 @@ export function JarvisApp() {
       setThinking(true);
       let replyId: string | null = null;
       let unreachable = false; // Anfrage kam gar nicht beim Server an (z. B. kein Internet)
+      const useDevice = deviceAi.status === "ready";
       try {
         const history = [...messagesRef.current, { role: "user" as const, text }]
           .slice(-20)
           .map((m) => ({ role: m.role === "jarvis" ? ("assistant" as const) : ("user" as const), text: m.text }));
         const now = new Date();
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-jarvis-code": settings.accessCode },
-          body: JSON.stringify({
-            messages: history,
-            userName: settings.userName,
-            localTime: `${formatDate(now)}, ${formatTime(now)} Uhr`,
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            tasks: tasks
-              .filter((t) => !t.done)
-              .slice(0, 30)
-              .map((t) => ({ title: t.title, remindAt: t.remindAt ? describeWhen(new Date(t.remindAt), now) : undefined })),
-          }),
-        }).catch((error: unknown) => {
-          unreachable = true;
-          throw error;
-        });
+        const localTime = `${formatDate(now)}, ${formatTime(now)} Uhr`;
+        const openTasks = tasks.filter((t) => !t.done).slice(0, 30);
 
-        if (res.status === 401) {
-          jarvisSays(
-            settings.accessCode
-              ? "Der Zugangscode stimmt leider nicht. Bitte prüfen Sie ihn in den Einstellungen."
-              : "Für mein KI-Modul brauche ich einen Zugangscode. Bitte tragen Sie ihn in den Einstellungen ein.",
+        let chunks: AsyncIterable<string>;
+        if (useDevice) {
+          // KI direkt im Gerät – ganz ohne Server
+          chunks = deviceChat(
+            history.map((m) => ({ role: m.role, content: m.text })),
+            { userName: settings.userName, localTime, tasks: openTasks.map((t) => t.title) },
           );
-          return;
-        }
-        if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+        } else {
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-jarvis-code": settings.accessCode },
+            body: JSON.stringify({
+              messages: history,
+              userName: settings.userName,
+              localTime,
+              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              tasks: openTasks.map((t) => ({
+                title: t.title,
+                remindAt: t.remindAt ? describeWhen(new Date(t.remindAt), now) : undefined,
+              })),
+            }),
+          }).catch((error: unknown) => {
+            unreachable = true;
+            throw error;
+          });
 
-        // Antwort Stück für Stück lesen und sofort anzeigen
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
+          if (res.status === 401) {
+            jarvisSays(
+              settings.accessCode
+                ? "Der Zugangscode stimmt leider nicht. Bitte prüfen Sie ihn in den Einstellungen."
+                : "Für mein KI-Modul brauche ich einen Zugangscode. Bitte tragen Sie ihn in den Einstellungen ein.",
+            );
+            return;
+          }
+          if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+          chunks = readTextStream(res.body);
+        }
+
+        // Antwort Stück für Stück anzeigen
         let reply = "";
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          reply += decoder.decode(value, { stream: true });
+        for await (const piece of chunks) {
+          reply += piece;
           if (!reply.trim()) continue;
           if (!replyId) {
             setThinking(false);
@@ -385,17 +421,18 @@ export function JarvisApp() {
             updateMessage(replyId, reply);
           }
         }
-        reply = (reply + decoder.decode()).trim();
+        reply = reply.trim();
         if (!reply) throw new Error("Leere Antwort");
         if (replyId) updateMessage(replyId, reply);
         else addMessage("jarvis", reply);
         say(reply);
-      } catch {
-        // Ohne Internet antwortet das eingebaute Gehirn direkt auf dem Gerät
-        const msg =
-          unreachable && !replyId
-            ? localAnswer(text, settings.userName)
-          : "Verbindung zum Kernsystem unterbrochen. Bitte versuchen Sie es gleich noch einmal.";
+      } catch (error) {
+        if (useDevice) console.warn("[JARVIS] Geräte-KI:", error);
+        const msg = useDevice
+          ? "Meine Geräte-KI hatte gerade ein Problem. Bitte versuchen Sie es noch einmal."
+          : unreachable && !replyId
+            ? localAnswer(text, settings.userName) // ohne Internet: eingebautes Gehirn
+            : "Verbindung zum Kernsystem unterbrochen. Bitte versuchen Sie es gleich noch einmal.";
         if (replyId) updateMessage(replyId, msg);
         else addMessage("jarvis", msg);
         say(msg);
@@ -403,7 +440,7 @@ export function JarvisApp() {
         setThinking(false);
       }
     },
-    [addMessage, updateMessage, jarvisSays, say, runCommand, settings.userName, settings.accessCode, tasks, tts],
+    [addMessage, updateMessage, jarvisSays, say, runCommand, settings.userName, settings.accessCode, tasks, tts, deviceAi.status],
   );
 
   const stt = useSpeechRecognition(handleUserInput);
@@ -537,6 +574,12 @@ export function JarvisApp() {
                 : (lastJarvis?.text ?? "Bereit für Ihre Befehle.")}
             </p>
             <TimerPills timers={timers} />
+            {deviceAi.status === "loading" && (
+              <span className="ai-loading" role="status">
+                <i style={{ width: `${Math.round(deviceAi.progress * 100)}%` }} />
+                <span>{deviceAi.message}</span>
+              </span>
+            )}
             {stt.error && <p className="stage__error">{stt.error}</p>}
           </div>
 
@@ -606,6 +649,7 @@ export function JarvisApp() {
         voices={tts.voices}
         speechSupported={tts.supported}
         installer={installer}
+        deviceAi={deviceAi}
         onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))}
         onTestVoice={() =>
           tts.speak(`Hallo${settings.userName ? ` ${settings.userName}` : ""}, so klinge ich mit diesen Einstellungen.`, {

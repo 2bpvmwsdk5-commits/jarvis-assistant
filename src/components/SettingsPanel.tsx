@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ChatApiStatus, Settings } from "@/lib/types";
 import type { useInstall } from "@/hooks/useInstall";
+import type { useDeviceAi } from "@/hooks/useDeviceAi";
 import { CloseIcon, VolumeIcon } from "./Icons";
 
 interface SettingsPanelProps {
@@ -11,6 +12,7 @@ interface SettingsPanelProps {
   voices: SpeechSynthesisVoice[];
   speechSupported: boolean;
   installer: ReturnType<typeof useInstall>;
+  deviceAi: ReturnType<typeof useDeviceAi>;
   onChange: (patch: Partial<Settings>) => void;
   onTestVoice: () => void;
   onClearChat: () => void;
@@ -29,6 +31,7 @@ export function SettingsPanel({
   voices,
   speechSupported,
   installer,
+  deviceAi,
   onChange,
   onTestVoice,
   onClearChat,
@@ -127,6 +130,49 @@ export function SettingsPanel({
           </fieldset>
 
           <fieldset className="settings__group">
+            <legend>KI im Gerät · Experiment</legend>
+            <p className="hint">
+              Eine kleine KI läuft direkt auf diesem Gerät – kostenlos und privat. Beim ersten Einschalten wird sie
+              einmalig heruntergeladen (ca. 700 MB, am besten im WLAN). Sie ist einfacher als große KIs und kann sich
+              irren. Benötigt ein neueres Gerät (iPhone/iPad mit iOS 26 oder einen aktuellen Computer).
+            </p>
+            <Toggle
+              label="KI im Gerät verwenden"
+              checked={settings.deviceAi}
+              onChange={(v) => onChange({ deviceAi: v })}
+            />
+            {settings.deviceAi && (
+              <div className={`device-ai device-ai--${deviceAi.status}`} role="status">
+                {deviceAi.status === "loading" && (
+                  <div className="progress" aria-hidden="true">
+                    <i style={{ width: `${Math.round(deviceAi.progress * 100)}%` }} />
+                  </div>
+                )}
+                <p>
+                  {deviceAi.status === "ready"
+                    ? "✓ Bereit – JARVIS antwortet jetzt mit der KI im Gerät."
+                    : deviceAi.status === "off"
+                      ? "Startet nach „System starten“."
+                      : deviceAi.message}
+                </p>
+              </div>
+            )}
+            {deviceAi.downloaded && (
+              <button
+                className="btn btn--ghost"
+                onClick={() => {
+                  if (window.confirm("Heruntergeladene KI vom Gerät löschen (gibt ca. 700 MB frei)?")) {
+                    onChange({ deviceAi: false });
+                    deviceAi.remove();
+                  }
+                }}
+              >
+                Heruntergeladene KI löschen
+              </button>
+            )}
+          </fieldset>
+
+          <fieldset className="settings__group">
             <legend>App</legend>
             {installer.standalone ? (
               <p className="install-ok">✓ JARVIS ist als App installiert.</p>
@@ -161,7 +207,9 @@ export function SettingsPanel({
             <div className="status-row">
               <span>KI-Modul</span>
               <b>
-                {status === null
+                {settings.deviceAi && deviceAi.status === "ready"
+                  ? "KI im Gerät (Llama 3.2)"
+                  : status === null
                   ? "…"
                   : status === "offline"
                     ? "Nicht erreichbar"
@@ -183,7 +231,7 @@ export function SettingsPanel({
             )}
             <div className="status-row">
               <span>Version</span>
-              <b>1.3.1</b>
+              <b>1.4</b>
             </div>
             <div className="settings__actions">
               <button className="btn btn--ghost" onClick={onClearChat}>

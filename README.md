@@ -3,7 +3,7 @@
 Ein futuristischer, persönlicher Assistent im Lila-Design – inspiriert von JARVIS aus Iron Man.
 Läuft im Browser auf **iPhone, iPad und Desktop**.
 
-![Version](https://img.shields.io/badge/Version-1.3-a855f7)
+![Version](https://img.shields.io/badge/Version-1.4-a855f7)
 
 ## Was JARVIS kann
 
@@ -61,6 +61,18 @@ npm run lint       # Code-Qualität prüfen
 npm run build      # fertige Version bauen
 npm start          # fertige Version starten
 ```
+
+## KI im Gerät – kostenlos (Experiment)
+
+Unter Zahnrad → **KI im Gerät** lässt sich eine kleine KI (Llama 3.2, 1B) einschalten, die
+**direkt auf dem Gerät** läuft – kostenlos, ohne Konto, ohne Server.
+
+- Einmaliger Download von ca. **700 MB** (am besten im WLAN), danach aus dem Gerätespeicher.
+- Benötigt **WebGPU**: iPhone/iPad mit **iOS/iPadOS 26** oder ein aktueller Chrome/Edge/Safari am Computer.
+- Geräte mit wenig Arbeitsspeicher (z. B. 4 GB) sind ein Grenzfall. Stürzt das Laden ab,
+  schaltet JARVIS die Funktion beim nächsten Start automatisch aus.
+- Die KI ist deutlich einfacher als große Cloud-KIs und kann sich irren.
+- Speicher freigeben: Zahnrad → KI im Gerät → „Heruntergeladene KI löschen“.
 
 ## Echte KI (Claude) aktivieren – optional
 

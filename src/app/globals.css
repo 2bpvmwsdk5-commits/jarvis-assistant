@@ -1582,6 +1582,62 @@ select.input option {
   color: var(--text-dim);
 }
 
+.device-ai p {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.device-ai--ready p {
+  color: var(--lavender-soft);
+}
+
+.device-ai--error p,
+.device-ai--unsupported p {
+  color: #f5d0fe;
+}
+
+.progress,
+.ai-loading {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: rgba(7, 3, 15, 0.6);
+}
+
+.progress {
+  height: 8px;
+  margin-bottom: 8px;
+}
+
+.progress i,
+.ai-loading i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--purple-600), var(--neon));
+  box-shadow: var(--glow-sm);
+  transition: width 0.4s var(--ease);
+}
+
+.ai-loading {
+  display: inline-block;
+  min-width: 220px;
+  padding: 5px 14px;
+  font-size: 0.75rem;
+  color: var(--lavender-soft);
+  text-align: center;
+}
+
+.ai-loading i {
+  opacity: 0.45;
+}
+
+.ai-loading span {
+  position: relative;
+}
+
 .install-ok {
   margin: 0;
   color: var(--lavender-soft);
