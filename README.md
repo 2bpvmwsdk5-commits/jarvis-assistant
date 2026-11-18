@@ -3,7 +3,7 @@
 Ein futuristischer, persönlicher Assistent im Lila-Design – inspiriert von JARVIS aus Iron Man.
 Läuft im Browser auf **iPhone, iPad und Desktop**.
 
-![Version](https://img.shields.io/badge/Version-1.2-a855f7)
+![Version](https://img.shields.io/badge/Version-1.3-a855f7)
 
 ## Was JARVIS kann
 
@@ -15,6 +15,8 @@ Läuft im Browser auf **iPhone, iPad und Desktop**.
 | Sprachausgabe           | JARVIS liest Antworten vor (Lautsprecher-Symbol oben schaltet das um)      |
 | Uhrzeit & Datum         | Live oben in der Mitte                                                     |
 | Aufgaben & Erinnerungen | Im Aufgaben-Bereich – oder per Sprache/Chat (siehe unten)                  |
+| Timer                   | Schnellstart-Knöpfe im Bereich „Zeit“ (Handy: Tab „Zeit“) – oder per Sprache |
+| Countdowns              | Tage bis zu einem Datum zählen und wichtige Termine speichern             |
 | Einstellungen           | Zahnrad oben rechts: Name, Stimme, Tempo, Tonhöhe, Begrüßung              |
 
 ### Beispiel-Befehle
@@ -24,6 +26,10 @@ Läuft im Browser auf **iPhone, iPad und Desktop**.
 - „Erinnere mich in 10 Minuten an den Tee“
 - „Erinnere mich morgen um 8 an den Zahnarzt“
 - „Welche Aufgaben habe ich?“
+- „Timer auf 10 Minuten“ · „Timer für die Nudeln auf 8 Minuten“ · „Weck mich in 20 Minuten“
+- „Wie lange läuft der Timer noch?“ · „Timer stoppen“
+- „Wie viele Tage bis Weihnachten?“ · „Wie lange noch bis zum 1. Juli?“
+- „Countdown: Urlaub am 1. Juli“ · „Wie viele Tage bis zu meinem Urlaub?“
 - „Wie spät ist es?“ · „Welcher Tag ist heute?“ · „Was kannst du?“
 
 ## Als App installieren

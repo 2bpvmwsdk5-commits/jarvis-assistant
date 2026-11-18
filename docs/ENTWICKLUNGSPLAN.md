@@ -88,6 +88,7 @@ jarvis-assistant/
 | **1.0** | Design, KI-Kern, Chat, Sprache ein/aus, Uhr, Aufgaben/Erinnerungen, Einstellungen        |
 | 1.1 ✅  | Claude als echtes Gehirn, Antworten als Stream, Zugangscode-Schutz, Kontext (Zeit, Aufgaben) |
 | 1.2 ✅  | Installierbar als App (PWA), Offline-Modus, App-Icon auf dem Home-Bildschirm             |
+| 1.3 ✅  | Timer (mit Signalton & Ansage) und Countdowns (Feiertage, Daten, gespeicherte Termine)   |
 | 2.0     | Benutzerkonto & Cloud-Datenbank (Daten auf allen Geräten), Kalender-Anbindung            |
 | 2.x     | Weitere Integrationen (z. B. Wetter, E-Mail) – **Lexware/Bank erst nach Freigabe**       |
 

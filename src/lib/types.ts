@@ -64,3 +64,18 @@ export interface ChatApiStatus {
   provider: string;
   accessCodeRequired: boolean;
 }
+
+export interface Timer {
+  id: string;
+  label: string;
+  durationMs: number;
+  endAt?: string; // ISO – gesetzt, solange der Timer läuft
+  remainingMs?: number; // gesetzt, solange der Timer pausiert
+}
+
+export interface Countdown {
+  id: string;
+  title: string;
+  date: string; // „JJJJ-MM-TT“ (Ortszeit)
+  createdAt: string;
+}

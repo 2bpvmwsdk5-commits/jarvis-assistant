@@ -522,7 +522,10 @@ button:disabled {
   padding: clamp(14px, 1.6vw, 24px) clamp(16px, 3vw, 32px);
   padding-bottom: calc(clamp(14px, 1.6vw, 24px) + var(--tabbar-h) + env(safe-area-inset-bottom));
   grid-template-columns: minmax(290px, 360px) minmax(0, 1fr) minmax(330px, 420px);
-  grid-template-areas: "tasks stage chat";
+  grid-template-rows: minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-areas:
+    "tasks stage chat"
+    "timers stage chat";
   height: calc(100dvh - var(--topbar-h) - env(safe-area-inset-top));
 }
 
@@ -536,6 +539,11 @@ button:disabled {
 }
 .layout__tasks {
   grid-area: tasks;
+  min-height: 0;
+  display: flex;
+}
+.layout__timers {
+  grid-area: timers;
   min-height: 0;
   display: flex;
 }
@@ -1247,6 +1255,232 @@ select.input option {
   margin: 0 16px 14px;
 }
 
+/* ───────────── Timer & Countdowns ───────────── */
+
+.chrono__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.quick {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  padding: 12px 16px 0;
+}
+
+.quick__btn {
+  padding: 8px 0;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(46, 7, 82, 0.35);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1.1;
+  transition: all 0.2s var(--ease);
+}
+
+.quick__btn b {
+  display: block;
+  font-family: var(--font-display), sans-serif;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--lavender-soft);
+}
+
+.quick__btn:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--glow-sm);
+}
+
+.chrono__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* erste Zeile: Bezeichnung über die ganze Breite */
+.chrono__form > :first-child {
+  grid-column: 1 / -1;
+}
+
+.chrono__minutes {
+  text-align: left;
+}
+
+.chrono__list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 10px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.timer,
+.countdown {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  animation: bubble-in 0.35s var(--ease);
+}
+
+.timer:hover,
+.countdown:hover {
+  background: rgba(91, 26, 153, 0.22);
+}
+
+.timer__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timer__time {
+  font-family: var(--font-display), sans-serif;
+  font-size: 1.35rem;
+  letter-spacing: 0.06em;
+  color: var(--lavender-soft);
+  text-shadow: 0 0 12px rgba(192, 132, 252, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.timer__label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timer.is-paused .timer__time {
+  opacity: 0.55;
+  animation: blink 1.6s ease-in-out infinite;
+}
+
+.ring {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+  color: var(--lavender);
+}
+
+.ring foreignObject {
+  transform: rotate(90deg);
+  transform-origin: 24px 24px;
+  opacity: 0.8;
+}
+
+.ring__track {
+  fill: none;
+  stroke: rgba(192, 132, 252, 0.18);
+  stroke-width: 3;
+}
+
+.ring__bar {
+  fill: none;
+  stroke: var(--neon);
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px var(--violet));
+  transition: stroke-dashoffset 0.9s linear;
+}
+
+.countdown__days {
+  width: 58px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: linear-gradient(160deg, rgba(139, 47, 240, 0.3), rgba(46, 7, 82, 0.5));
+  box-shadow: inset 0 0 12px rgba(168, 85, 247, 0.25);
+}
+
+.countdown__days b {
+  font-family: var(--font-display), sans-serif;
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--lavender-soft);
+  text-shadow: var(--glow-sm);
+  line-height: 1.1;
+}
+
+.countdown__days span {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.countdown.is-today .countdown__days {
+  background: linear-gradient(135deg, var(--orchid), var(--purple-600));
+  box-shadow: var(--glow-md);
+}
+
+.countdown.is-today .countdown__days b {
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 7px 0;
+}
+
+.countdown.is-past {
+  opacity: 0.5;
+}
+
+.countdown__title {
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.timer-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.timer-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: rgba(46, 7, 82, 0.55);
+  font-family: var(--font-display), sans-serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: var(--lavender-soft);
+  font-variant-numeric: tabular-nums;
+  box-shadow: var(--glow-sm);
+}
+
+.timer-pill em {
+  font-family: var(--font-body), sans-serif;
+  font-style: normal;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  color: var(--text-muted);
+}
+
+.timer-pill.is-paused {
+  opacity: 0.55;
+}
+
 /* ───────────── Einstellungen (Schublade) ───────────── */
 
 .drawer {
@@ -1603,10 +1837,11 @@ select.input option {
   .layout {
     height: auto;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(460px, 58vh);
+    grid-template-rows: auto minmax(330px, 36vh) minmax(330px, 36vh);
     grid-template-areas:
       "stage stage"
-      "chat tasks";
+      "chat tasks"
+      "chat timers";
   }
 
   .stage__core-btn {
@@ -1670,12 +1905,18 @@ select.input option {
   }
 
   .layout__chat,
-  .layout__tasks {
+  .layout__tasks,
+  .layout__timers {
     grid-area: panel;
   }
 
-  .layout[data-tab="chat"] .layout__tasks,
-  .layout[data-tab="tasks"] .layout__chat {
+  .layout:not([data-tab="chat"]) .layout__chat,
+  .layout:not([data-tab="tasks"]) .layout__tasks,
+  .layout:not([data-tab="timers"]) .layout__timers {
+    display: none;
+  }
+
+  .layout:not([data-tab="chat"]) .chips {
     display: none;
   }
 
@@ -1715,13 +1956,20 @@ select.input option {
     display: none;
   }
 
+  .chrono__form,
+  .chrono__form--countdown {
+    padding: 10px 12px;
+  }
+
+  .quick {
+    padding: 10px 12px 0;
+  }
+
   .tasks__form {
     padding: 10px 12px;
   }
 
-  .layout[data-tab="tasks"] .chips {
-    display: none;
-  }
+
 
   .tabbar {
     position: fixed;
@@ -1730,7 +1978,7 @@ select.input option {
     right: 0;
     bottom: 0;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
     border-top: 1px solid var(--line);

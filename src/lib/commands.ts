@@ -9,7 +9,15 @@
  * Alles hier ist reine Logik ohne Browser-Abhängigkeit – dadurch gut testbar.
  */
 
+import { parseDateExpr, parseDuration } from "./chrono";
+
 export type Command =
+  | { kind: "startTimer"; durationMs: number; label: string }
+  | { kind: "cancelTimer" }
+  | { kind: "timerStatus" }
+  | { kind: "countdownQuery"; date?: Date; label: string }
+  | { kind: "addCountdown"; title: string; date: Date }
+  | { kind: "listCountdowns" }
   | { kind: "addTask"; title: string; remindAt?: Date }
   | { kind: "listTasks" }
   | { kind: "time" }
@@ -102,6 +110,11 @@ export function parseCommand(input: string, now: Date = new Date()): Command | n
   const lower = text.toLowerCase();
   if (!text) return null;
 
+  const timerCmd = parseTimerCommand(text, lower);
+  if (timerCmd) return timerCmd;
+  const countdownCmd = parseCountdownCommand(text, lower, now);
+  if (countdownCmd) return countdownCmd;
+
   // Erinnerungen
   const remind = text.match(/^(?:bitte\s+)?erinner(?:e|n)?\s+mich\s+(.*)$/i);
   if (remind) {
@@ -129,6 +142,78 @@ export function parseCommand(input: string, now: Date = new Date()): Command | n
   }
   if (/^(hilfe|help)\b|was kannst du/.test(lower)) return { kind: "help" };
 
+  return null;
+}
+
+/* ───────────── Timer ───────────── */
+
+const TIMER_FILLER =
+  /\b(bitte|jarvis|stell\w*|setz\w*|start\w*|mach\w*|einen?|neuen?|timer|wecker|eieruhr|auf|mir|mich|weck\w*|in|von|lang)\b/gi;
+
+function parseTimerCommand(text: string, lower: string): Command | null {
+  const mentionsTimer = /\b(timer|eieruhr|wecker)\b/.test(lower) || /^weck(e)? mich\b/.test(lower);
+  if (!mentionsTimer) return null;
+
+  if (
+    /\b(stopp\w*|stop|abbrechen|abbruch|beende\w*|lösch\w*|aus(schalten)?|anhalten|cancel)\b/.test(lower) ||
+    /\bbrich\b.*\bab\b/.test(lower)
+  ) {
+    return { kind: "cancelTimer" };
+  }
+  if (/\b(wie lange|wie viel zeit|restzeit|übrig|noch|status|läuft)\b/.test(lower)) {
+    return { kind: "timerStatus" };
+  }
+
+  const duration = parseDuration(text);
+  if (!duration) return null;
+
+  // Bezeichnung: „Timer für die Nudeln auf 8 Minuten“ → „Nudeln“
+  let label = "Timer";
+  const forMatch = duration.rest.match(/\bfür\s+(?:die|den|das|meine[n]?)?\s*(.+)$/i);
+  if (forMatch) {
+    const cleaned = forMatch[1].replace(TIMER_FILLER, " ").replace(/[.!?]+$/, "").replace(/\s+/g, " ").trim();
+    if (cleaned) label = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+  return { kind: "startTimer", durationMs: Math.min(duration.ms, 24 * 3_600_000), label };
+}
+
+/* ───────────── Countdowns ───────────── */
+
+function parseCountdownCommand(text: string, lower: string, now: Date): Command | null {
+  if (/\b(welche|meine|zeig\w*|liste)\b.*\bcountdowns?\b/.test(lower)) return { kind: "listCountdowns" };
+
+  // Speichern: „Countdown: Urlaub am 1. Juli“, „Neuer Countdown für Mamas Geburtstag am 3.5.“
+  const save = text.match(/^(?:erstelle\s+(?:einen\s+)?|starte\s+(?:einen\s+)?|neuer\s+)?countdown\s*[:\-]?\s*(.+)$/i);
+  if (save) {
+    const parsed = parseDateExpr(save[1], now);
+    if (parsed) {
+      const title = parsed.rest
+        .replace(/^(bis|für|zum|zur|zu)\b\s*/i, "")
+        .replace(/\s+(am|zum|bis|den|dem|ab)$/i, "")
+        .replace(/[.!?:]+$/, "")
+        .trim();
+      const fallback = parsed.label.replace(/^zum\s+/, "");
+      return {
+        kind: "addCountdown",
+        title: title ? title.charAt(0).toUpperCase() + title.slice(1) : fallback.charAt(0).toUpperCase() + fallback.slice(1),
+        date: parsed.date,
+      };
+    }
+  }
+
+  // Fragen: „Wie viele Tage bis Weihnachten?“, „Wie lange noch bis zum 1. Juli?“
+  const question = lower.match(
+    /\b(?:wie\s+(?:viele|lange|oft)(?:\s+(?:tage|wochen|noch|schlafen|mal schlafen))*|tage|countdown)\b.*?\bbis\b\s*(?:zu[mr]?\s+|zu\s+(?:meine[mr]?|unsere[mr]?)\s+)?(.+)$/,
+  );
+  if (question) {
+    const target = question[1]
+      .replace(/[?.!]+$/, "")
+      .replace(/^(meine[mnrs]?|unsere[mnrs]?|deine[mnrs]?|de[mnr]|die|das)\s+/, "")
+      .trim();
+    const parsed = parseDateExpr(target, now);
+    if (parsed) return { kind: "countdownQuery", date: parsed.date, label: parsed.label };
+    return { kind: "countdownQuery", label: target };
+  }
   return null;
 }
 

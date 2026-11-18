@@ -2,7 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { describeWhen, formatDate, formatTime, greetingFor, parseCommand, type Command } from "@/lib/commands";
-import { DEFAULT_SETTINGS, type ChatMessage, type CoreState, type Settings, type Task } from "@/lib/types";
+import {
+  DEFAULT_SETTINGS,
+  type ChatMessage,
+  type CoreState,
+  type Countdown,
+  type Settings,
+  type Task,
+  type Timer,
+} from "@/lib/types";
+import { describeCountdown, formatDuration } from "@/lib/chrono";
+import { playChime, unlockAudio } from "@/lib/sound";
 import { useIsClient, usePersistentState } from "@/hooks/usePersistentState";
 import { useSpeechRecognition, useSpeechSynthesis } from "@/hooks/useSpeech";
 import { useInstall } from "@/hooks/useInstall";
@@ -12,16 +22,18 @@ import { BootScreen } from "./BootScreen";
 import { ChatPanel } from "./ChatPanel";
 import { ClockDisplay } from "./ClockDisplay";
 import { HoloBackground } from "./HoloBackground";
-import { BellIcon, ChatIcon, CloseIcon, ListIcon, MicIcon, MuteIcon, SettingsIcon, VolumeIcon } from "./Icons";
+import { BellIcon, ChatIcon, CloseIcon, ListIcon, MicIcon, MuteIcon, SettingsIcon, TimerIcon, VolumeIcon } from "./Icons";
 import { SettingsPanel } from "./SettingsPanel";
 import { TasksPanel } from "./TasksPanel";
+import { parseLocalDate, remainingMs, TimerPills, TimersPanel } from "./TimersPanel";
 
 const MAX_STORED_MESSAGES = 100;
 const SUGGESTIONS = [
   "Was kannst du?",
   "Wie spät ist es?",
+  "Timer auf 5 Minuten",
+  "Wie viele Tage bis Weihnachten?",
   "Erinnere mich in 5 Minuten an den Tee",
-  "Neue Aufgabe: Einkaufen",
   "Erzähl mir einen Witz",
 ];
 
@@ -41,11 +53,13 @@ export function JarvisApp() {
   const [settings, setSettings] = usePersistentState<Settings>("jarvis.settings", DEFAULT_SETTINGS);
   const [tasks, setTasks] = usePersistentState<Task[]>("jarvis.tasks", []);
   const [messages, setMessages] = usePersistentState<ChatMessage[]>("jarvis.chat", []);
+  const [timers, setTimers] = usePersistentState<Timer[]>("jarvis.timers", []);
+  const [countdowns, setCountdowns] = usePersistentState<Countdown[]>("jarvis.countdowns", []);
 
   const [booted, setBooted] = useState(false);
   const [thinking, setThinking] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [mobileTab, setMobileTab] = useState<"chat" | "tasks">("chat");
+  const [mobileTab, setMobileTab] = useState<"chat" | "tasks" | "timers">("chat");
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const tts = useSpeechSynthesis();
@@ -156,6 +170,85 @@ export function JarvisApp() {
     return () => clearInterval(timer);
   }, [booted, tasks, setTasks, pushToast, jarvisSays, settings.userName]);
 
+  /* ───────────── Timer & Countdowns ───────────── */
+
+  const startTimer = useCallback(
+    (durationMs: number, label: string) => {
+      unlockAudio(); // Tippen/Sprechen ist eine Berührung → Ton ist danach erlaubt
+      const timer: Timer = { id: uid(), label, durationMs, endAt: new Date(Date.now() + durationMs).toISOString() };
+      setTimers((prev) => [...prev, timer]);
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().catch(() => {});
+      }
+    },
+    [setTimers],
+  );
+  const pauseTimer = useCallback(
+    (id: string) =>
+      setTimers((prev) =>
+        prev.map((t) => (t.id === id && t.endAt ? { ...t, endAt: undefined, remainingMs: remainingMs(t, Date.now()) } : t)),
+      ),
+    [setTimers],
+  );
+  const resumeTimer = useCallback(
+    (id: string) =>
+      setTimers((prev) =>
+        prev.map((t) =>
+          t.id === id && !t.endAt
+            ? { ...t, endAt: new Date(Date.now() + (t.remainingMs ?? t.durationMs)).toISOString(), remainingMs: undefined }
+            : t,
+        ),
+      ),
+    [setTimers],
+  );
+  const deleteTimer = useCallback((id: string) => setTimers((prev) => prev.filter((t) => t.id !== id)), [setTimers]);
+
+  const addCountdown = useCallback(
+    (title: string, date: Date) => {
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const ymd = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+      setCountdowns((prev) => [...prev, { id: uid(), title, date: ymd, createdAt: new Date().toISOString() }]);
+    },
+    [setCountdowns],
+  );
+  const deleteCountdown = useCallback(
+    (id: string) => setCountdowns((prev) => prev.filter((c) => c.id !== id)),
+    [setCountdowns],
+  );
+
+  // Abgelaufene Timer erkennen (jede halbe Sekunde)
+  useEffect(() => {
+    if (!booted) return;
+    const check = () => {
+      const now = Date.now();
+      const done = timers.filter((t) => t.endAt && Date.parse(t.endAt) <= now);
+      if (!done.length) return;
+      setTimers((prev) => prev.filter((t) => !done.some((d) => d.id === t.id)));
+      playChime();
+      if ("vibrate" in navigator) navigator.vibrate?.([300, 150, 300, 150, 300]);
+      for (const t of done) {
+        const lateMin = Math.floor((now - Date.parse(t.endAt!)) / 60_000);
+        const name = t.label === "Timer" ? "Ihr Timer" : `Der Timer für ${t.label}`;
+        const text =
+          lateMin >= 1
+            ? `${name} ist vor ${lateMin} ${lateMin === 1 ? "Minute" : "Minuten"} abgelaufen.`
+            : `${settings.userName ? `${settings.userName}, ` : ""}${name.charAt(0).toLowerCase() + name.slice(1)} ist abgelaufen.`;
+        pushToast("Timer abgelaufen", t.label === "Timer" ? formatDuration(t.durationMs) : t.label);
+        // kurz warten, damit der Signalton zuerst erklingt
+        setTimeout(() => jarvisSays(text.charAt(0).toUpperCase() + text.slice(1)), 1200);
+        if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+          const options = { body: t.label, icon: "/icon-192.png", badge: "/icon-192.png", tag: t.id };
+          navigator.serviceWorker?.ready
+            .then((r) => r.showNotification("JARVIS – Timer abgelaufen", options))
+            .catch(() => {});
+        }
+      }
+    };
+    check();
+    const interval = setInterval(check, 500);
+    return () => clearInterval(interval);
+  }, [booted, timers, setTimers, pushToast, jarvisSays, settings.userName]);
+
   /* ───────────── Befehle & Chat ───────────── */
 
   const runCommand = useCallback(
@@ -180,10 +273,52 @@ export function JarvisApp() {
         case "date":
           return `Heute ist ${formatDate(now)}.`;
         case "help":
-          return "Ich kann mit Ihnen sprechen, Aufgaben notieren und Sie erinnern. Sagen Sie zum Beispiel: „Neue Aufgabe: Wäsche waschen“, „Erinnere mich um 15 Uhr an den Anruf“, „Welche Aufgaben habe ich?“ oder fragen Sie nach der Uhrzeit.";
+          return "Ich kann mit Ihnen sprechen, Aufgaben notieren, Sie erinnern, Timer stellen und Tage zählen. Sagen Sie zum Beispiel: „Neue Aufgabe: Wäsche waschen“, „Erinnere mich um 15 Uhr an den Anruf“, „Timer auf 10 Minuten“, „Wie viele Tage bis Weihnachten?“ oder „Countdown: Urlaub am 1. Juli“.";
+        case "startTimer": {
+          startTimer(cmd.durationMs, cmd.label);
+          const what = cmd.label === "Timer" ? "" : ` für ${cmd.label}`;
+          return `Timer${what} gestellt: ${formatDuration(cmd.durationMs)}. Ich sage Bescheid, wenn die Zeit um ist.`;
+        }
+        case "cancelTimer": {
+          if (!timers.length) return "Es läuft gerade kein Timer.";
+          setTimers([]);
+          return timers.length === 1 ? "Der Timer wurde gestoppt." : `Alle ${timers.length} Timer wurden gestoppt.`;
+        }
+        case "timerStatus": {
+          if (!timers.length) return "Es läuft gerade kein Timer.";
+          return timers
+            .map((t) => {
+              const name = t.label === "Timer" ? "Der Timer" : `Der Timer für ${t.label}`;
+              const left = formatDuration(remainingMs(t, now.getTime()));
+              return t.endAt ? `${name} läuft noch ${left}.` : `${name} ist pausiert, ${left} übrig.`;
+            })
+            .join(" ");
+        }
+        case "countdownQuery": {
+          if (cmd.date) return describeCountdown(cmd.label, cmd.date, now);
+          const q = cmd.label.toLowerCase();
+          const saved = countdowns.find((c) => {
+            const t = c.title.toLowerCase();
+            return t.includes(q) || q.includes(t);
+          });
+          if (saved) return describeCountdown(`„${saved.title}“`, parseLocalDate(saved.date), now);
+          return "Dieses Datum kenne ich leider nicht. Fragen Sie zum Beispiel: „Wie viele Tage bis zum 24.12.?“ – oder legen Sie einen Countdown an: „Countdown: Urlaub am 1. Juli“.";
+        }
+        case "addCountdown": {
+          addCountdown(cmd.title, cmd.date);
+          return `Countdown „${cmd.title}“ angelegt. ${describeCountdown(`„${cmd.title}“`, cmd.date, now)}`;
+        }
+        case "listCountdowns": {
+          if (!countdowns.length) return "Sie haben noch keine Countdowns. Sagen Sie zum Beispiel: „Countdown: Urlaub am 1. Juli“.";
+          return [...countdowns]
+            .sort((a, b) => a.date.localeCompare(b.date))
+            .slice(0, 5)
+            .map((c) => describeCountdown(`„${c.title}“`, parseLocalDate(c.date), now))
+            .join(" ");
+        }
       }
     },
-    [addTask, tasks],
+    [addTask, tasks, startTimer, timers, setTimers, countdowns, addCountdown],
   );
 
   const handleUserInput = useCallback(
@@ -284,6 +419,7 @@ export function JarvisApp() {
 
   const start = useCallback(
     (name: string) => {
+      unlockAudio();
       if (name && name !== settings.userName) setSettings((s) => ({ ...s, userName: name }));
       setBooted(true);
       const now = new Date();
@@ -399,6 +535,7 @@ export function JarvisApp() {
                 ? stt.interim || "Sprechen Sie jetzt …"
                 : (lastJarvis?.text ?? "Bereit für Ihre Befehle.")}
             </p>
+            <TimerPills timers={timers} />
             {stt.error && <p className="stage__error">{stt.error}</p>}
           </div>
 
@@ -435,6 +572,19 @@ export function JarvisApp() {
         <div className="layout__tasks">
           <TasksPanel tasks={tasks} onAdd={addTask} onToggle={toggleTask} onDelete={deleteTask} onClearDone={clearDone} />
         </div>
+
+        <div className="layout__timers">
+          <TimersPanel
+            timers={timers}
+            countdowns={countdowns}
+            onStartTimer={startTimer}
+            onPauseTimer={pauseTimer}
+            onResumeTimer={resumeTimer}
+            onDeleteTimer={deleteTimer}
+            onAddCountdown={addCountdown}
+            onDeleteCountdown={deleteCountdown}
+          />
+        </div>
       </main>
 
       <nav className="tabbar" aria-label="Bereiche">
@@ -443,6 +593,9 @@ export function JarvisApp() {
         </button>
         <button aria-current={mobileTab === "tasks"} onClick={() => setMobileTab("tasks")}>
           <ListIcon /> Aufgaben {openTasks.length > 0 && <b className="badge">{openTasks.length}</b>}
+        </button>
+        <button aria-current={mobileTab === "timers"} onClick={() => setMobileTab("timers")}>
+          <TimerIcon /> Zeit {timers.length > 0 && <b className="badge">{timers.length}</b>}
         </button>
       </nav>
 
@@ -465,6 +618,8 @@ export function JarvisApp() {
           tts.cancel();
           setMessages([]);
           setTasks([]);
+          setTimers([]);
+          setCountdowns([]);
           setSettings(DEFAULT_SETTINGS);
           setSettingsOpen(false);
           setBooted(false);
