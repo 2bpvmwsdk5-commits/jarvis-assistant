@@ -462,7 +462,11 @@ export function JarvisApp() {
         } else {
           const res = await fetch("/api/chat", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "x-jarvis-code": settings.accessCode },
+            headers: {
+              "Content-Type": "application/json",
+              "x-jarvis-code": settings.accessCode,
+              ...(settings.geminiKey ? { "x-gemini-key": settings.geminiKey.trim() } : {}),
+            },
             body: JSON.stringify({
               messages: history,
               userName: settings.userName,
@@ -522,7 +526,7 @@ export function JarvisApp() {
         setThinking(false);
       }
     },
-    [addMessage, updateMessage, jarvisSays, say, runCommand, settings.userName, settings.accessCode, tasks, tts, deviceAi.status, memories],
+    [addMessage, updateMessage, jarvisSays, say, runCommand, settings.userName, settings.accessCode, settings.geminiKey, tasks, tts, deviceAi.status, memories],
   );
 
   const stt = useSpeechRecognition(handleUserInput);

@@ -3,7 +3,7 @@
 Ein futuristischer, persönlicher Assistent im Lila-Design – inspiriert von JARVIS aus Iron Man.
 Läuft im Browser auf **iPhone, iPad und Desktop**.
 
-![Version](https://img.shields.io/badge/Version-2.0-a855f7)
+![Version](https://img.shields.io/badge/Version-2.1-a855f7)
 
 ## Was JARVIS kann
 
@@ -84,11 +84,12 @@ Gemerktes bleibt auf dem Gerät und wird der KI als Hintergrundwissen mitgegeben
 
 Funktioniert auf jedem Gerät (auch älteren iPads), da die KI bei Google läuft.
 
-1. Auf **https://aistudio.google.com** mit einem Google-Konto anmelden → **„Get API key“** →
+1. Auf **https://aistudio.google.com/apikey** mit einem Google-Konto anmelden →
    **„Create API key“** → Schlüssel kopieren. **Keine Zahlungsdaten eingeben** – dann bleibt es kostenlos.
-2. Bei **Netlify**: Project configuration → Environment variables → **Add a variable** →
-   Key `GEMINI_API_KEY`, Value = Ihr Schlüssel.
-3. Deploys → **Trigger deploy** → Deploy site.
+2. In JARVIS: Zahnrad → **KI-Schlüssel** → Schlüssel einfügen. Fertig.
+
+   *(Alternativ für alle Geräte auf einmal: bei Netlify die Umgebungsvariable `GEMINI_API_KEY` setzen
+   und neu veröffentlichen.)*
 
 Fertig – unter Zahnrad → System steht dann „KI-Modul: Gemini (Google, kostenlos)“.
 Mit Gemini kann JARVIS bei Bedarf auch **im Internet nachschlagen** (Google-Suche).

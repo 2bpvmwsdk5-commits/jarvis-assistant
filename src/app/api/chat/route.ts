@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAccessCode, getProvider, isAccessCodeValid, type AiContext } from "@/lib/ai";
+import { createGeminiProvider, looksLikeGeminiKey } from "@/lib/ai/gemini";
 import type { ChatApiMessage, ChatApiStatus, TaskSummary } from "@/lib/types";
 
 /**
@@ -87,7 +88,12 @@ function textStream(
 }
 
 export async function POST(request: Request) {
-  if (!isAccessCodeValid(request.headers.get("x-jarvis-code"))) {
+  // Eigener Gemini-Schlüssel der Nutzerin (in JARVIS eingetragen) – kostet den Server nichts,
+  // daher ohne Zugangscode erlaubt. Der Schlüssel wird nirgends gespeichert oder protokolliert.
+  const ownKey = request.headers.get("x-gemini-key");
+  const userKey = looksLikeGeminiKey(ownKey) ? ownKey.trim() : null;
+
+  if (!userKey && !isAccessCodeValid(request.headers.get("x-jarvis-code"))) {
     return NextResponse.json({ error: "access_code" }, { status: 401 });
   }
 
@@ -103,7 +109,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Ungültige Nachricht." }, { status: 400 });
   }
 
-  const provider = getProvider();
+  const provider = userKey ? createGeminiProvider(userKey) : getProvider();
   const stream = textStream(provider.stream(input.messages, input.context), async function* (alreadySent) {
     if (alreadySent) {
       yield " … Entschuldigung, die Verbindung zu meinem KI-Modul wurde unterbrochen.";

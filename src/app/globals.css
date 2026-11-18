@@ -1668,6 +1668,13 @@ select.input option {
   color: #f5d0fe;
 }
 
+.link {
+  color: var(--lavender-soft);
+  text-decoration: underline;
+  text-decoration-color: var(--neon);
+  text-underline-offset: 3px;
+}
+
 .install-ok {
   margin: 0;
   color: var(--lavender-soft);

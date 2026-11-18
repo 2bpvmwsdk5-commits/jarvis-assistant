@@ -105,6 +105,45 @@ export function SettingsPanel({
           </fieldset>
 
           <fieldset className="settings__group">
+            <legend>KI-Schlüssel (kostenlos)</legend>
+            <p className="hint">
+              Damit JARVIS auf alles antworten und im Internet nachsehen kann: kostenlosen Gemini-Schlüssel bei Google
+              holen und hier einfügen.
+            </p>
+            <ol className="install-steps">
+              <li>
+                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="link">
+                  aistudio.google.com/apikey
+                </a>{" "}
+                öffnen und mit dem Google-Konto anmelden.
+              </li>
+              <li>
+                <b>„Create API key“</b> tippen und den Schlüssel kopieren (beginnt meist mit „AIza“).
+              </li>
+              <li>Hier unten einfügen – fertig. Keine Zahlungsdaten bei Google eingeben.</li>
+            </ol>
+            <label className="field">
+              <span>Gemini-Schlüssel</span>
+              <input
+                className="input"
+                type="password"
+                value={settings.geminiKey}
+                onChange={(e) => onChange({ geminiKey: e.target.value.replace(/\s/g, "").slice(0, 100) })}
+                placeholder="AIza…"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            {settings.geminiKey && (
+              <p className={settings.geminiKey.length >= 20 ? "install-ok" : "hint hint--error"}>
+                {settings.geminiKey.length >= 20
+                  ? "✓ Schlüssel gespeichert (nur auf diesem Gerät). Stellen Sie JARVIS eine Frage zum Testen."
+                  : "Der Schlüssel scheint unvollständig – bitte ganz kopieren."}
+              </p>
+            )}
+          </fieldset>
+
+          <fieldset className="settings__group">
             <legend>Benachrichtigungen</legend>
             {!push.supported || (installer.ios && !installer.standalone) ? (
               <p className="hint">
@@ -312,6 +351,8 @@ export function SettingsPanel({
               <b>
                 {settings.deviceAi && deviceAi.status === "ready"
                   ? "KI im Gerät (Llama 3.2)"
+                  : settings.geminiKey.length >= 20
+                    ? "Gemini (Google, kostenlos)"
                   : status === null
                   ? "…"
                   : status === "offline"
@@ -334,7 +375,7 @@ export function SettingsPanel({
             )}
             <div className="status-row">
               <span>Version</span>
-              <b>2.0</b>
+              <b>2.1</b>
             </div>
             <div className="settings__actions">
               <button className="btn btn--ghost" onClick={onClearChat}>

@@ -15,9 +15,18 @@ import type { AiProvider } from "./provider";
 const DEFAULT_MODEL = "gemini-flash-lite-latest";
 const FALLBACK_MODEL = "gemini-flash-latest";
 
-export function createGeminiProvider(): AiProvider {
+/** Grobe Formprüfung eines Gemini-Schlüssels (z. B. „AIza…“). */
+export function looksLikeGeminiKey(key: string | null | undefined): key is string {
+  return typeof key === "string" && /^[A-Za-z0-9_-]{20,100}$/.test(key.trim());
+}
+
+/**
+ * @param apiKey Optional: Schlüssel, den die Nutzerin direkt in JARVIS eingetragen hat.
+ *               Sonst wird GEMINI_API_KEY vom Server verwendet.
+ */
+export function createGeminiProvider(apiKey?: string): AiProvider {
   const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
+    apiKey: apiKey?.trim() || process.env.GEMINI_API_KEY,
     // nur für Tests: eigener Server statt Google
     ...(process.env.GEMINI_BASE_URL ? { httpOptions: { baseUrl: process.env.GEMINI_BASE_URL } } : {}),
   });
@@ -91,7 +100,7 @@ function handleKnownError(error: unknown): string {
     }
     if (error.status === 400 || error.status === 401 || error.status === 403) {
       console.error("[JARVIS] Gemini lehnt den Schlüssel ab:", error.message);
-      return "Mein KI-Schlüssel wird nicht akzeptiert. Bitte prüfen Sie den GEMINI_API_KEY bei Netlify.";
+      return "Mein Gemini-Schlüssel wird nicht akzeptiert. Bitte prüfen Sie ihn unter Einstellungen → KI-Schlüssel (ganz kopiert, ohne Leerzeichen?).";
     }
   }
   throw error;

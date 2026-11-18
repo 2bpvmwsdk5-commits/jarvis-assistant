@@ -66,8 +66,8 @@ const RULES: Rule[] = [
 ];
 
 const FALLBACKS = [
-  "Verstanden. Mein volles KI-Modul ist noch nicht aktiviert, daher kann ich darauf noch nicht ausführlich antworten. Ich kann aber Aufgaben und Erinnerungen für Sie verwalten – sagen Sie zum Beispiel: „Erinnere mich in 10 Minuten an den Tee“.",
-  "Interessante Frage. Dafür brauche ich mein erweitertes KI-Modul, das in einer kommenden Version aktiviert wird. Sagen Sie „Hilfe“, um zu sehen, was ich schon kann.",
+  "Dafür brauche ich mein volles KI-Modul. Das ist kostenlos: Tippen Sie oben rechts auf das Zahnrad und dann auf „KI-Schlüssel“ – dort steht in drei Schritten, wie es geht. Aufgaben, Erinnerungen und Timer kann ich schon jetzt für Sie erledigen.",
+  "Gute Frage! Um darauf richtig antworten zu können, aktivieren Sie bitte mein KI-Modul unter Zahnrad → „KI-Schlüssel“ (kostenlos). Sagen Sie „Hilfe“, um zu sehen, was ich schon kann.",
 ];
 
 function pick<T>(items: T[]): T {
