@@ -1,0 +1,8 @@
+# Einstellungen für Netlify (Hosting).
+# Netlify erkennt Next.js automatisch – hier wird nur festgelegt,
+# wie gebaut wird und welche Node.js-Version dafür genutzt wird.
+[build]
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "22"
