@@ -23,6 +23,7 @@ interface SettingsPanelProps {
 const PROVIDER_LABEL: Record<string, string> = {
   local: "Lokales Modul (ohne Internet-KI)",
   claude: "Claude (Anthropic)",
+  gemini: "Gemini (Google, kostenlos)",
 };
 
 export function SettingsPanel({
@@ -231,7 +232,7 @@ export function SettingsPanel({
             )}
             <div className="status-row">
               <span>Version</span>
-              <b>1.4</b>
+              <b>1.5</b>
             </div>
             <div className="settings__actions">
               <button className="btn btn--ghost" onClick={onClearChat}>

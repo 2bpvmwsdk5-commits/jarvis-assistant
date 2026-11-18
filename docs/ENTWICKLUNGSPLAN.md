@@ -90,6 +90,7 @@ jarvis-assistant/
 | 1.2 ✅  | Installierbar als App (PWA), Offline-Modus, App-Icon auf dem Home-Bildschirm             |
 | 1.3 ✅  | Timer (mit Signalton & Ansage) und Countdowns (Feiertage, Daten, gespeicherte Termine)   |
 | 1.4 🧪  | Experiment: kostenlose KI direkt im Gerät (WebGPU, Llama 3.2 1B) mit Absturz-Sicherung   |
+| 1.5 ✅  | Kostenlose Cloud-KI: Google Gemini (Gratis-Kontingent), läuft auf jedem Gerät            |
 | 2.0     | Benutzerkonto & Cloud-Datenbank (Daten auf allen Geräten), Kalender-Anbindung            |
 | 2.x     | Weitere Integrationen (z. B. Wetter, E-Mail) – **Lexware/Bank erst nach Freigabe**       |
 

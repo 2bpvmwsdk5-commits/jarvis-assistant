@@ -6,6 +6,7 @@ afterEach(() => vi.unstubAllEnvs());
 describe("Auswahl des KI-Gehirns", () => {
   it("nutzt standardmäßig das lokale Gehirn", () => {
     vi.stubEnv("JARVIS_AI_PROVIDER", "");
+    vi.stubEnv("GEMINI_API_KEY", "");
     expect(getProvider().name).toBe("local");
   });
 
@@ -20,6 +21,18 @@ describe("Auswahl des KI-Gehirns", () => {
     vi.stubEnv("JARVIS_AI_PROVIDER", "claude");
     vi.stubEnv("ANTHROPIC_API_KEY", "sk-test");
     vi.stubEnv("JARVIS_ACCESS_CODE", "");
+    expect(getProvider().name).toBe("local");
+  });
+
+  it("nutzt Gemini, sobald ein Gemini-Schlüssel gesetzt ist (ohne weitere Einstellungen)", () => {
+    vi.stubEnv("JARVIS_AI_PROVIDER", "");
+    vi.stubEnv("GEMINI_API_KEY", "test-key");
+    expect(getProvider().name).toBe("gemini");
+  });
+
+  it("„local“ erzwingt das lokale Gehirn trotz Gemini-Schlüssel", () => {
+    vi.stubEnv("JARVIS_AI_PROVIDER", "local");
+    vi.stubEnv("GEMINI_API_KEY", "test-key");
     expect(getProvider().name).toBe("local");
   });
 

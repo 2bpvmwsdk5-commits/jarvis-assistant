@@ -1,17 +1,22 @@
 import { timingSafeEqual } from "node:crypto";
 import { createClaudeProvider } from "./claude";
+import { createGeminiProvider } from "./gemini";
 import { localProvider } from "./local";
 import type { AiProvider } from "./provider";
 
 /**
- * Wählt das passende Gehirn anhand der Umgebungsvariablen.
+ * Wählt das passende Gehirn anhand der Umgebungsvariablen:
  *
- * Claude wird nur genutzt, wenn ZUSÄTZLICH ein Zugangscode festgelegt ist.
- * So kann niemand, der nur die Internet-Adresse kennt, auf Ihre Kosten chatten.
- * Fehlt etwas, nutzt JARVIS automatisch das kostenlose lokale Gehirn.
+ *  - Gemini (Google): kostenloses Kontingent. Es genügt, GEMINI_API_KEY zu setzen.
+ *  - Claude (Anthropic): kostenpflichtig – nur zusammen mit einem Zugangscode
+ *    (JARVIS_ACCESS_CODE), damit niemand mit Ihrer Adresse auf Ihre Kosten chattet.
+ *  - Sonst: das kostenlose lokale Gehirn.
+ *
+ * JARVIS_AI_PROVIDER kann „gemini“, „claude“ oder „local“ erzwingen.
  */
 export function getProvider(): AiProvider {
-  const wanted = (process.env.JARVIS_AI_PROVIDER ?? "local").toLowerCase();
+  const wanted = (process.env.JARVIS_AI_PROVIDER ?? "").trim().toLowerCase();
+
   if (wanted === "claude") {
     if (!process.env.ANTHROPIC_API_KEY) {
       console.warn("[JARVIS] JARVIS_AI_PROVIDER=claude, aber ANTHROPIC_API_KEY fehlt – nutze lokales Gehirn.");
@@ -20,7 +25,13 @@ export function getProvider(): AiProvider {
     } else {
       return createClaudeProvider();
     }
+    return localProvider;
   }
+
+  if (wanted === "local") return localProvider;
+
+  if (process.env.GEMINI_API_KEY) return createGeminiProvider();
+  if (wanted === "gemini") console.warn("[JARVIS] JARVIS_AI_PROVIDER=gemini, aber GEMINI_API_KEY fehlt – nutze lokales Gehirn.");
   return localProvider;
 }
 
