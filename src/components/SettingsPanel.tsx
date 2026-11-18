@@ -1,0 +1,183 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { Settings } from "@/lib/types";
+import { CloseIcon, VolumeIcon } from "./Icons";
+
+interface SettingsPanelProps {
+  open: boolean;
+  settings: Settings;
+  voices: SpeechSynthesisVoice[];
+  speechSupported: boolean;
+  onChange: (patch: Partial<Settings>) => void;
+  onTestVoice: () => void;
+  onClearChat: () => void;
+  onResetAll: () => void;
+  onClose: () => void;
+}
+
+const PROVIDER_LABEL: Record<string, string> = {
+  local: "Lokales Modul (ohne Internet-KI)",
+  claude: "Claude (Anthropic)",
+};
+
+export function SettingsPanel({
+  open,
+  settings,
+  voices,
+  speechSupported,
+  onChange,
+  onTestVoice,
+  onClearChat,
+  onResetAll,
+  onClose,
+}: SettingsPanelProps) {
+  const [provider, setProvider] = useState<string | null>(null);
+
+  // Welches KI-Gehirn ist auf dem Server aktiv?
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetch("/api/chat")
+      .then((r) => r.json())
+      .then((d: { provider?: string }) => !cancelled && setProvider(d.provider ?? null))
+      .catch(() => !cancelled && setProvider("offline"));
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  // Mit der Escape-Taste schließen
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  return (
+    <div className={`drawer ${open ? "is-open" : ""}`} aria-hidden={!open} inert={!open}>
+      <div className="drawer__backdrop" onClick={onClose} />
+      <aside className="drawer__panel panel" role="dialog" aria-modal="true" aria-label="Einstellungen">
+        <header className="panel__header">
+          <h2 className="panel__title">
+            <span className="panel__dot" /> Einstellungen
+          </h2>
+          <button className="icon-btn" onClick={onClose} aria-label="Einstellungen schließen">
+            <CloseIcon />
+          </button>
+        </header>
+
+        <div className="settings">
+          <fieldset className="settings__group">
+            <legend>Persönlich</legend>
+            <label className="field">
+              <span>Wie soll JARVIS Sie nennen?</span>
+              <input
+                className="input"
+                value={settings.userName}
+                onChange={(e) => onChange({ userName: e.target.value.slice(0, 40) })}
+                placeholder="Ihr Name"
+                autoComplete="given-name"
+              />
+            </label>
+            <Toggle
+              label="Begrüßung beim Start"
+              checked={settings.greetingEnabled}
+              onChange={(v) => onChange({ greetingEnabled: v })}
+            />
+          </fieldset>
+
+          <fieldset className="settings__group">
+            <legend>Stimme</legend>
+            {!speechSupported && <p className="hint">Dieser Browser unterstützt keine Sprachausgabe.</p>}
+            <Toggle
+              label="Antworten vorlesen"
+              checked={settings.voiceEnabled}
+              onChange={(v) => onChange({ voiceEnabled: v })}
+            />
+            <label className="field">
+              <span>Stimme</span>
+              <select
+                className="input"
+                value={settings.voiceName}
+                onChange={(e) => onChange({ voiceName: e.target.value })}
+                disabled={!voices.length}
+              >
+                <option value="">Automatisch (beste deutsche Stimme)</option>
+                {voices.map((v) => (
+                  <option key={v.voiceURI} value={v.name}>
+                    {v.name} ({v.lang})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Slider label="Sprechtempo" value={settings.speechRate} onChange={(v) => onChange({ speechRate: v })} />
+            <Slider label="Tonhöhe" value={settings.speechPitch} onChange={(v) => onChange({ speechPitch: v })} />
+            <button className="btn btn--ghost" onClick={onTestVoice} disabled={!speechSupported}>
+              <VolumeIcon size={18} /> Stimme testen
+            </button>
+            <p className="hint">
+              Tipp: Auf iPhone und iPad klingen die Stimmen „Anna (Premium)“ oder „Helena (Premium)“ besonders
+              natürlich. Sie lassen sich unter Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen laden.
+            </p>
+          </fieldset>
+
+          <fieldset className="settings__group">
+            <legend>System</legend>
+            <div className="status-row">
+              <span>KI-Modul</span>
+              <b>{provider ? (PROVIDER_LABEL[provider] ?? provider) : "…"}</b>
+            </div>
+            <div className="status-row">
+              <span>Version</span>
+              <b>1.0</b>
+            </div>
+            <div className="settings__actions">
+              <button className="btn btn--ghost" onClick={onClearChat}>
+                Chatverlauf löschen
+              </button>
+              <button
+                className="btn btn--danger"
+                onClick={() => {
+                  if (window.confirm("Wirklich alle Daten (Aufgaben, Chat, Einstellungen) löschen?")) onResetAll();
+                }}
+              >
+                Alles zurücksetzen
+              </button>
+            </div>
+          </fieldset>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="toggle">
+      <span>{label}</span>
+      <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <i aria-hidden="true" />
+    </label>
+  );
+}
+
+function Slider({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <label className="field">
+      <span>
+        {label} <b>{value.toFixed(1)}×</b>
+      </span>
+      <input
+        type="range"
+        className="range"
+        min={0.5}
+        max={1.5}
+        step={0.1}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+    </label>
+  );
+}
