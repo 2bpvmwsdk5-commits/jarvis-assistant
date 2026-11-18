@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ChatApiStatus, Settings } from "@/lib/types";
+import type { ChatApiStatus, Memory, Settings } from "@/lib/types";
 import type { useInstall } from "@/hooks/useInstall";
 import type { useDeviceAi } from "@/hooks/useDeviceAi";
-import { CloseIcon, VolumeIcon } from "./Icons";
+import { CloseIcon, TrashIcon, VolumeIcon } from "./Icons";
 
 interface SettingsPanelProps {
   open: boolean;
@@ -13,6 +13,8 @@ interface SettingsPanelProps {
   speechSupported: boolean;
   installer: ReturnType<typeof useInstall>;
   deviceAi: ReturnType<typeof useDeviceAi>;
+  memories: Memory[];
+  onDeleteMemory: (id: string) => void;
   onChange: (patch: Partial<Settings>) => void;
   onTestVoice: () => void;
   onClearChat: () => void;
@@ -33,6 +35,8 @@ export function SettingsPanel({
   speechSupported,
   installer,
   deviceAi,
+  memories,
+  onDeleteMemory,
   onChange,
   onTestVoice,
   onClearChat,
@@ -93,6 +97,32 @@ export function SettingsPanel({
               checked={settings.greetingEnabled}
               onChange={(v) => onChange({ greetingEnabled: v })}
             />
+          </fieldset>
+
+          <fieldset className="settings__group">
+            <legend>Gedächtnis</legend>
+            <p className="hint">
+              Sagen Sie z. B. <b>„Merke dir, dass ich Katzen mag“</b>. JARVIS berücksichtigt das in Gesprächen.
+              „Vergiss …“ löscht einen Eintrag wieder. Alles bleibt auf diesem Gerät gespeichert.
+            </p>
+            {memories.length === 0 ? (
+              <p className="hint">Noch nichts gemerkt.</p>
+            ) : (
+              <ul className="memory-list">
+                {memories.map((m) => (
+                  <li key={m.id}>
+                    <span>{m.text}</span>
+                    <button
+                      className="icon-btn icon-btn--small"
+                      onClick={() => onDeleteMemory(m.id)}
+                      aria-label={`„${m.text}“ vergessen`}
+                    >
+                      <TrashIcon size={14} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </fieldset>
 
           <fieldset className="settings__group">

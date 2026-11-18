@@ -26,7 +26,7 @@ export function createGeminiProvider(): AiProvider {
   return {
     name: "gemini",
     async *stream(messages, context) {
-      const request = (model: string) =>
+      const request = (model: string, withSearch: boolean) =>
         ai.models.generateContentStream({
           model,
           contents: messages.map((m) => ({
@@ -34,19 +34,33 @@ export function createGeminiProvider(): AiProvider {
             parts: [{ text: m.text }],
           })),
           config: {
-            systemInstruction: `${PERSONA}\n${contextPrompt(context)}`,
+            systemInstruction: `${PERSONA}\n${contextPrompt({ ...context, webSearch: withSearch })}`,
             temperature: 0.7,
             maxOutputTokens: 1000,
+            ...(withSearch ? { tools: [{ googleSearch: {} }] } : {}),
           },
         });
 
+      // Erst mit Google-Suche versuchen; lehnt das Modell die Suche ab (400), ohne Suche.
+      const requestWithFallback = async (model: string) => {
+        try {
+          return await request(model, true);
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 400) {
+            console.warn("[JARVIS] Gemini-Suche nicht verfügbar – antworte ohne Suche.");
+            return request(model, false);
+          }
+          throw error;
+        }
+      };
+
       let response;
       try {
-        response = await request(preferred);
+        response = await requestWithFallback(preferred);
       } catch (error) {
         if (error instanceof ApiError && error.status === 404 && preferred !== FALLBACK_MODEL) {
           console.warn(`[JARVIS] Gemini-Modell „${preferred}“ nicht gefunden – nutze ${FALLBACK_MODEL}.`);
-          response = await request(FALLBACK_MODEL).catch(handleKnownError);
+          response = await requestWithFallback(FALLBACK_MODEL).catch(handleKnownError);
         } else {
           response = handleKnownError(error);
         }

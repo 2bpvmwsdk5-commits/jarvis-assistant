@@ -53,6 +53,12 @@ function validate(body: unknown): { messages: ChatApiMessage[]; context: AiConte
       localTime: str(b.localTime, 80),
       timeZone: str(b.timeZone, 60),
       tasks,
+      memories: Array.isArray(b.memories)
+        ? b.memories
+            .slice(0, 30)
+            .map((m) => str(m, 200))
+            .filter((m): m is string => Boolean(m))
+        : undefined,
     },
   };
 }

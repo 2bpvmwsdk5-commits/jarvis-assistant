@@ -7,6 +7,7 @@ import {
   type ChatMessage,
   type CoreState,
   type Countdown,
+  type Memory,
   type Settings,
   type Task,
   type Timer,
@@ -70,6 +71,7 @@ export function JarvisApp() {
   const [messages, setMessages] = usePersistentState<ChatMessage[]>("jarvis.chat", []);
   const [timers, setTimers] = usePersistentState<Timer[]>("jarvis.timers", []);
   const [countdowns, setCountdowns] = usePersistentState<Countdown[]>("jarvis.countdowns", []);
+  const [memories, setMemories] = usePersistentState<Memory[]>("jarvis.memory", []);
 
   const [booted, setBooted] = useState(false);
   const [thinking, setThinking] = useState(false);
@@ -335,6 +337,34 @@ export function JarvisApp() {
           addCountdown(cmd.title, cmd.date);
           return `Countdown „${cmd.title}“ angelegt. ${describeCountdown(`„${cmd.title}“`, cmd.date, now)}`;
         }
+        case "remember": {
+          if (memories.some((m) => m.text.toLowerCase() === cmd.fact.toLowerCase())) {
+            return "Das weiß ich bereits.";
+          }
+          setMemories((prev) =>
+            [...prev, { id: uid(), text: cmd.fact, createdAt: new Date().toISOString() }].slice(-50),
+          );
+          return `Verstanden, ich merke mir: „${cmd.fact}“.`;
+        }
+        case "listMemory": {
+          if (!memories.length) {
+            return "Ich habe mir noch nichts über Sie gemerkt. Sagen Sie zum Beispiel: „Merke dir, dass ich Katzen mag.“";
+          }
+          const items = memories.slice(-8).map((m) => `„${m.text}“`);
+          return `Ich habe mir ${memories.length === 1 ? "Folgendes" : `${memories.length} Dinge`} gemerkt: ${items.join(", ")}.`;
+        }
+        case "forget": {
+          const q = cmd.query.toLowerCase();
+          if (/^(alles|alle|das alles)$/.test(q)) {
+            if (!memories.length) return "Mein Gedächtnis ist bereits leer.";
+            setMemories([]);
+            return "In Ordnung, ich habe alles vergessen, was ich mir gemerkt hatte.";
+          }
+          const hit = memories.filter((m) => m.text.toLowerCase().includes(q) || q.includes(m.text.toLowerCase()));
+          if (!hit.length) return `Dazu habe ich mir nichts gemerkt. Fragen Sie „Was weißt du über mich?“, um alles zu sehen.`;
+          setMemories((prev) => prev.filter((m) => !hit.some((h) => h.id === m.id)));
+          return hit.length === 1 ? `Vergessen: „${hit[0].text}“.` : `Ich habe ${hit.length} Einträge vergessen.`;
+        }
         case "listCountdowns": {
           if (!countdowns.length) return "Sie haben noch keine Countdowns. Sagen Sie zum Beispiel: „Countdown: Urlaub am 1. Juli“.";
           return [...countdowns]
@@ -345,7 +375,7 @@ export function JarvisApp() {
         }
       }
     },
-    [addTask, tasks, startTimer, timers, setTimers, countdowns, addCountdown],
+    [addTask, tasks, startTimer, timers, setTimers, countdowns, addCountdown, memories, setMemories],
   );
 
   const handleUserInput = useCallback(
@@ -376,7 +406,12 @@ export function JarvisApp() {
           // KI direkt im Gerät – ganz ohne Server
           chunks = deviceChat(
             history.map((m) => ({ role: m.role, content: m.text })),
-            { userName: settings.userName, localTime, tasks: openTasks.map((t) => t.title) },
+            {
+              userName: settings.userName,
+              localTime,
+              tasks: openTasks.map((t) => t.title),
+              memories: memories.map((m) => m.text),
+            },
           );
         } else {
           const res = await fetch("/api/chat", {
@@ -387,6 +422,7 @@ export function JarvisApp() {
               userName: settings.userName,
               localTime,
               timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              memories: memories.map((m) => m.text),
               tasks: openTasks.map((t) => ({
                 title: t.title,
                 remindAt: t.remindAt ? describeWhen(new Date(t.remindAt), now) : undefined,
@@ -440,7 +476,7 @@ export function JarvisApp() {
         setThinking(false);
       }
     },
-    [addMessage, updateMessage, jarvisSays, say, runCommand, settings.userName, settings.accessCode, tasks, tts, deviceAi.status],
+    [addMessage, updateMessage, jarvisSays, say, runCommand, settings.userName, settings.accessCode, tasks, tts, deviceAi.status, memories],
   );
 
   const stt = useSpeechRecognition(handleUserInput);
@@ -650,6 +686,8 @@ export function JarvisApp() {
         speechSupported={tts.supported}
         installer={installer}
         deviceAi={deviceAi}
+        memories={memories}
+        onDeleteMemory={(id) => setMemories((prev) => prev.filter((m) => m.id !== id))}
         onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))}
         onTestVoice={() =>
           tts.speak(`Hallo${settings.userName ? ` ${settings.userName}` : ""}, so klinge ich mit diesen Einstellungen.`, {
@@ -665,6 +703,7 @@ export function JarvisApp() {
           setTasks([]);
           setTimers([]);
           setCountdowns([]);
+          setMemories([]);
           setSettings(DEFAULT_SETTINGS);
           setSettingsOpen(false);
           setBooted(false);

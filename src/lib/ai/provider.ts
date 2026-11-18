@@ -11,6 +11,10 @@ export interface AiContext {
   timeZone?: string;
   /** Offene Aufgaben, damit die KI Fragen wie „Was steht heute an?“ beantworten kann */
   tasks?: TaskSummary[];
+  /** Was sich JARVIS über die Nutzerin merken soll */
+  memories?: string[];
+  /** Vom Gehirn selbst gesetzt: Kann es im Internet suchen? */
+  webSearch?: boolean;
 }
 
 export interface AiProvider {

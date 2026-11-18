@@ -58,6 +58,13 @@ export interface ChatApiRequest {
   localTime?: string;
   timeZone?: string;
   tasks?: TaskSummary[];
+  memories?: string[];
+}
+
+export interface Memory {
+  id: string;
+  text: string;
+  createdAt: string;
 }
 
 /** Antwort von GET /api/chat */

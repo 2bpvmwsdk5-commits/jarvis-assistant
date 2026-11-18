@@ -25,6 +25,7 @@ export interface DeviceContext {
   userName?: string;
   localTime?: string;
   tasks?: string[];
+  memories?: string[];
 }
 
 let engine: MLCEngine | null = null;
@@ -140,6 +141,7 @@ function systemPrompt(ctx: DeviceContext): string {
   if (ctx.userName) lines.push(`Die Nutzerin heißt ${ctx.userName}.`);
   if (ctx.localTime) lines.push(`Aktuelle Zeit: ${ctx.localTime}.`);
   if (ctx.tasks?.length) lines.push(`Offene Aufgaben: ${ctx.tasks.slice(0, 8).join("; ")}.`);
+  if (ctx.memories?.length) lines.push(`Das weißt du über die Nutzerin: ${ctx.memories.slice(-10).join("; ")}.`);
   return lines.join("\n");
 }
 

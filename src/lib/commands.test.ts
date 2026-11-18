@@ -99,3 +99,23 @@ describe("Lokales Gehirn", () => {
     expect(localAnswer("Was ist der Sinn des Lebens?").length).toBeGreaterThan(10);
   });
 });
+
+describe("Gedächtnis", () => {
+  it("merkt sich Dinge", () => {
+    expect(parseCommand("Merke dir, dass ich Katzen mag.", NOW)).toEqual({ kind: "remember", fact: "ich Katzen mag" });
+    expect(parseCommand("Merk dir: Mein Lieblingsessen ist Pasta", NOW)).toEqual({
+      kind: "remember",
+      fact: "Mein Lieblingsessen ist Pasta",
+    });
+  });
+
+  it("fragt und vergisst", () => {
+    expect(parseCommand("Was weißt du über mich?", NOW)).toEqual({ kind: "listMemory" });
+    expect(parseCommand("Vergiss das mit den Katzen", NOW)).toEqual({ kind: "forget", query: "Katzen" });
+    expect(parseCommand("Vergiss alles", NOW)).toEqual({ kind: "forget", query: "alles" });
+  });
+
+  it("„Notiere“ legt weiterhin Aufgaben an", () => {
+    expect(parseCommand("Notiere Milch kaufen", NOW)).toMatchObject({ kind: "addTask", title: "Milch kaufen" });
+  });
+});

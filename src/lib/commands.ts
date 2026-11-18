@@ -18,6 +18,9 @@ export type Command =
   | { kind: "countdownQuery"; date?: Date; label: string }
   | { kind: "addCountdown"; title: string; date: Date }
   | { kind: "listCountdowns" }
+  | { kind: "remember"; fact: string }
+  | { kind: "listMemory" }
+  | { kind: "forget"; query: string }
   | { kind: "addTask"; title: string; remindAt?: Date }
   | { kind: "listTasks" }
   | { kind: "time" }
@@ -110,6 +113,8 @@ export function parseCommand(input: string, now: Date = new Date()): Command | n
   const lower = text.toLowerCase();
   if (!text) return null;
 
+  const memoryCmd = parseMemoryCommand(text, lower);
+  if (memoryCmd) return memoryCmd;
   const timerCmd = parseTimerCommand(text, lower);
   if (timerCmd) return timerCmd;
   const countdownCmd = parseCountdownCommand(text, lower, now);
@@ -125,7 +130,7 @@ export function parseCommand(input: string, now: Date = new Date()): Command | n
 
   // Neue Aufgabe
   const add =
-    text.match(/^(?:neue\s+aufgabe|aufgabe|notiere|notier|merke\s+dir|merk\s+dir|todo)\s*[:\-]?\s+(.+)$/i) ??
+    text.match(/^(?:neue\s+aufgabe|aufgabe|notiere|notier|todo)\s*[:\-]?\s+(.+)$/i) ??
     text.match(/^(?:füge|setze|schreibe)\s+(.+?)\s+(?:zu|auf)\s+(?:meine[rn]?\s+)?(?:aufgaben(?:liste)?|to-?do-?liste|liste)(?:\s+hinzu)?\.?$/i);
   if (add) {
     const { date, rest } = extractTime(add[1], now);
@@ -142,6 +147,25 @@ export function parseCommand(input: string, now: Date = new Date()): Command | n
   }
   if (/^(hilfe|help)\b|was kannst du/.test(lower)) return { kind: "help" };
 
+  return null;
+}
+
+/* ───────────── Gedächtnis ───────────── */
+
+function parseMemoryCommand(text: string, lower: string): Command | null {
+  if (/\bwas\s+(weißt|weisst)\s+du\s+(alles\s+)?(über|von)\s+(mich|mir)(?![a-zäöüß])|was\s+hast\s+du\s+dir\s+gemerkt/.test(lower)) {
+    return { kind: "listMemory" };
+  }
+  const remember = text.match(/^(?:bitte\s+)?merk(?:e)?\s+dir(?:\s+bitte)?[,:]?\s+(?:dass\s+)?(.+)$/i);
+  if (remember) {
+    const fact = remember[1].replace(/[.!]+$/, "").trim();
+    if (fact) return { kind: "remember", fact };
+  }
+  const forget = text.match(/^(?:bitte\s+)?vergiss(?:\s+bitte)?[,:]?\s+(?:dass\s+|das\s+mit\s+(?:de[mnr]|die|das)?\s*)?(.+)$/i);
+  if (forget) {
+    const query = forget[1].replace(/[.!]+$/, "").trim();
+    if (query) return { kind: "forget", query };
+  }
   return null;
 }
 
