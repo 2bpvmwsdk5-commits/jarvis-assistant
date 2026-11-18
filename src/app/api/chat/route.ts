@@ -1,42 +1,90 @@
 import { NextResponse } from "next/server";
-import { getProvider, localProvider } from "@/lib/ai";
-import type { ChatApiMessage, ChatApiResponse } from "@/lib/types";
+import { getAccessCode, getProvider, isAccessCodeValid, type AiContext } from "@/lib/ai";
+import type { ChatApiMessage, ChatApiStatus, TaskSummary } from "@/lib/types";
 
 /**
- * Server-Schnittstelle: POST /api/chat
- * Nimmt den Chatverlauf entgegen und liefert die Antwort von JARVIS.
+ * Server-Schnittstelle für den Chat.
+ *   GET  /api/chat → Status (welches Gehirn, ob ein Zugangscode nötig ist)
+ *   POST /api/chat → Antwort von JARVIS, als Text-Stream (erscheint Wort für Wort)
  * Läuft ausschließlich auf dem Server – hier dürfen geheime Schlüssel genutzt werden.
  */
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 const MAX_MESSAGES = 30;
 const MAX_TEXT_LENGTH = 4000;
+const MAX_TASKS = 30;
 
-function validate(body: unknown): { messages: ChatApiMessage[]; userName?: string } | null {
+const str = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : undefined);
+
+function validate(body: unknown): { messages: ChatApiMessage[]; context: AiContext } | null {
   if (!body || typeof body !== "object") return null;
-  const { messages, userName } = body as Record<string, unknown>;
-  if (!Array.isArray(messages) || messages.length === 0) return null;
+  const b = body as Record<string, unknown>;
+  if (!Array.isArray(b.messages) || b.messages.length === 0) return null;
 
-  const clean: ChatApiMessage[] = [];
-  for (const m of messages.slice(-MAX_MESSAGES)) {
+  const messages: ChatApiMessage[] = [];
+  for (const m of b.messages.slice(-MAX_MESSAGES)) {
     if (!m || typeof m !== "object") return null;
     const { role, text } = m as Record<string, unknown>;
     if ((role !== "user" && role !== "assistant") || typeof text !== "string") return null;
     const trimmed = text.trim().slice(0, MAX_TEXT_LENGTH);
-    if (trimmed) clean.push({ role, text: trimmed });
+    if (trimmed) messages.push({ role, text: trimmed });
   }
-  // Claude erwartet, dass der Verlauf mit einer Nutzer-Nachricht beginnt
-  while (clean.length && clean[0].role !== "user") clean.shift();
-  if (!clean.length || clean[clean.length - 1].role !== "user") return null;
+  // Claude erwartet, dass der Verlauf mit einer Nutzer-Nachricht beginnt und endet
+  while (messages.length && messages[0].role !== "user") messages.shift();
+  if (!messages.length || messages[messages.length - 1].role !== "user") return null;
+
+  let tasks: TaskSummary[] | undefined;
+  if (Array.isArray(b.tasks)) {
+    tasks = b.tasks
+      .slice(0, MAX_TASKS)
+      .map((t) => {
+        const o = (t ?? {}) as Record<string, unknown>;
+        return { title: str(o.title, 200) ?? "", remindAt: str(o.remindAt, 80) };
+      })
+      .filter((t) => t.title);
+  }
 
   return {
-    messages: clean,
-    userName: typeof userName === "string" ? userName.slice(0, 60) : undefined,
+    messages,
+    context: {
+      userName: str(b.userName, 60),
+      localTime: str(b.localTime, 80),
+      timeZone: str(b.timeZone, 60),
+      tasks,
+    },
   };
 }
 
+function textStream(
+  chunks: AsyncIterable<string>,
+  onError: (alreadySent: boolean) => AsyncIterable<string>,
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    async start(controller) {
+      let sent = false;
+      try {
+        for await (const chunk of chunks) {
+          sent = true;
+          controller.enqueue(encoder.encode(chunk));
+        }
+      } catch (error) {
+        console.error("[JARVIS] KI-Antwort fehlgeschlagen:", error);
+        for await (const chunk of onError(sent)) controller.enqueue(encoder.encode(chunk));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+}
+
 export async function POST(request: Request) {
+  if (!isAccessCodeValid(request.headers.get("x-jarvis-code"))) {
+    return NextResponse.json({ error: "access_code" }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
@@ -50,19 +98,27 @@ export async function POST(request: Request) {
   }
 
   const provider = getProvider();
-  const context = { userName: input.userName, now: new Date() };
+  const stream = textStream(provider.stream(input.messages, input.context), async function* (alreadySent) {
+    if (alreadySent) {
+      yield " … Entschuldigung, die Verbindung zu meinem KI-Modul wurde unterbrochen.";
+      return;
+    }
+    yield "Mein KI-Modul ist gerade nicht erreichbar. Bitte versuchen Sie es in einem Moment noch einmal. Aufgaben, Erinnerungen und die Uhrzeit funktionieren weiterhin.";
+  });
 
-  try {
-    const reply = await provider.reply(input.messages, context);
-    return NextResponse.json<ChatApiResponse>({ reply, provider: provider.name });
-  } catch (error) {
-    // Fällt die externe KI aus, antwortet JARVIS trotzdem – mit dem lokalen Gehirn.
-    console.error(`[JARVIS] KI-Anbieter „${provider.name}“ fehlgeschlagen:`, error);
-    const reply = await localProvider.reply(input.messages, context);
-    return NextResponse.json<ChatApiResponse>({ reply, provider: "local-fallback" });
-  }
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Jarvis-Provider": provider.name,
+    },
+  });
 }
 
 export function GET() {
-  return NextResponse.json({ status: "online", provider: getProvider().name });
+  return NextResponse.json<ChatApiStatus>({
+    status: "online",
+    provider: getProvider().name,
+    accessCodeRequired: Boolean(getAccessCode()),
+  });
 }

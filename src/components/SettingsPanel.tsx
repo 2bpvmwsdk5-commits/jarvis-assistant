@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Settings } from "@/lib/types";
+import type { ChatApiStatus, Settings } from "@/lib/types";
 import { CloseIcon, VolumeIcon } from "./Icons";
 
 interface SettingsPanelProps {
@@ -32,7 +32,7 @@ export function SettingsPanel({
   onResetAll,
   onClose,
 }: SettingsPanelProps) {
-  const [provider, setProvider] = useState<string | null>(null);
+  const [status, setStatus] = useState<ChatApiStatus | "offline" | null>(null);
 
   // Welches KI-Gehirn ist auf dem Server aktiv?
   useEffect(() => {
@@ -40,8 +40,8 @@ export function SettingsPanel({
     let cancelled = false;
     fetch("/api/chat")
       .then((r) => r.json())
-      .then((d: { provider?: string }) => !cancelled && setProvider(d.provider ?? null))
-      .catch(() => !cancelled && setProvider("offline"));
+      .then((d: ChatApiStatus) => !cancelled && setStatus(d))
+      .catch(() => !cancelled && setStatus("offline"));
     return () => {
       cancelled = true;
     };
@@ -127,11 +127,30 @@ export function SettingsPanel({
             <legend>System</legend>
             <div className="status-row">
               <span>KI-Modul</span>
-              <b>{provider ? (PROVIDER_LABEL[provider] ?? provider) : "…"}</b>
+              <b>
+                {status === null
+                  ? "…"
+                  : status === "offline"
+                    ? "Nicht erreichbar"
+                    : (PROVIDER_LABEL[status.provider] ?? status.provider)}
+              </b>
             </div>
+            {status !== null && status !== "offline" && status.accessCodeRequired && (
+              <label className="field">
+                <span>Zugangscode für das KI-Modul</span>
+                <input
+                  className="input"
+                  type="password"
+                  value={settings.accessCode}
+                  onChange={(e) => onChange({ accessCode: e.target.value.slice(0, 100) })}
+                  placeholder="Zugangscode eingeben"
+                  autoComplete="current-password"
+                />
+              </label>
+            )}
             <div className="status-row">
               <span>Version</span>
-              <b>1.0</b>
+              <b>1.1</b>
             </div>
             <div className="settings__actions">
               <button className="btn btn--ghost" onClick={onClearChat}>

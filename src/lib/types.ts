@@ -25,6 +25,7 @@ export interface Settings {
   speechRate: number; // 0.5 – 1.5
   speechPitch: number; // 0.5 – 1.5
   greetingEnabled: boolean;
+  accessCode: string; // Zugangscode für die KI (falls auf dem Server festgelegt)
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -34,6 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   speechRate: 1,
   speechPitch: 1,
   greetingEnabled: true,
+  accessCode: "",
 };
 
 /** Nachricht, wie sie an die Server-Schnittstelle /api/chat geschickt wird. */
@@ -42,12 +44,23 @@ export interface ChatApiMessage {
   text: string;
 }
 
+/** Kurzfassung einer Aufgabe, die der KI als Kontext mitgegeben wird. */
+export interface TaskSummary {
+  title: string;
+  remindAt?: string; // lesbar, z. B. „heute um 15:30 Uhr“
+}
+
 export interface ChatApiRequest {
   messages: ChatApiMessage[];
   userName?: string;
+  localTime?: string;
+  timeZone?: string;
+  tasks?: TaskSummary[];
 }
 
-export interface ChatApiResponse {
-  reply: string;
+/** Antwort von GET /api/chat */
+export interface ChatApiStatus {
+  status: "online";
   provider: string;
+  accessCodeRequired: boolean;
 }

@@ -1,4 +1,4 @@
-import type { ChatApiMessage } from "@/lib/types";
+import type { ChatApiMessage, TaskSummary } from "@/lib/types";
 
 /**
  * Ein „Gehirn“ für JARVIS. Jede KI (lokal, Claude, …) erfüllt diese Schnittstelle.
@@ -6,10 +6,15 @@ import type { ChatApiMessage } from "@/lib/types";
  */
 export interface AiContext {
   userName?: string;
-  now: Date;
+  /** Datum & Uhrzeit, wie sie auf dem Gerät der Nutzerin angezeigt werden */
+  localTime?: string;
+  timeZone?: string;
+  /** Offene Aufgaben, damit die KI Fragen wie „Was steht heute an?“ beantworten kann */
+  tasks?: TaskSummary[];
 }
 
 export interface AiProvider {
   readonly name: string;
-  reply(messages: ChatApiMessage[], context: AiContext): Promise<string>;
+  /** Liefert die Antwort Stück für Stück (Streaming), damit sie sofort erscheint. */
+  stream(messages: ChatApiMessage[], context: AiContext): AsyncIterable<string>;
 }

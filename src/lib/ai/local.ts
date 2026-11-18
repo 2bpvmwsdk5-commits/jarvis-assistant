@@ -84,8 +84,8 @@ export function localAnswer(text: string, userName = ""): string {
 
 export const localProvider: AiProvider = {
   name: "local",
-  async reply(messages, context) {
+  async *stream(messages, context) {
     const last = [...messages].reverse().find((m) => m.role === "user");
-    return localAnswer(last?.text ?? "", context.userName);
+    yield localAnswer(last?.text ?? "", context.userName);
   },
 };

@@ -1,26 +1,37 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { AiProvider } from "./provider";
+import type { AiContext, AiProvider } from "./provider";
 
 /**
- * Claude-Gehirn (Anthropic). Wird nur aktiv, wenn
- *   JARVIS_AI_PROVIDER=claude  und  ANTHROPIC_API_KEY  gesetzt sind.
- * Der Schlüssel bleibt immer auf dem Server und erreicht nie den Browser.
+ * Claude-Gehirn (Anthropic). Wird nur aktiv, wenn auf dem Server
+ *   JARVIS_AI_PROVIDER=claude, ANTHROPIC_API_KEY und JARVIS_ACCESS_CODE
+ * gesetzt sind. Der Schlüssel bleibt immer auf dem Server und erreicht nie den Browser.
  */
 
 const DEFAULT_MODEL = "claude-opus-5-5";
 
-function systemPrompt(userName: string | undefined, now: Date): string {
-  return [
-    "Du bist JARVIS, ein eleganter, höflicher und leicht humorvoller persönlicher KI-Assistent – inspiriert von JARVIS aus Iron Man.",
-    "Antworte immer auf Deutsch und sieze die Nutzerin, sofern sie nichts anderes wünscht.",
-    "Deine Antworten werden oft vorgelesen: Antworte kurz und natürlich (meist 1–3 Sätze), ohne Markdown, Listen oder Emojis.",
-    "Aufgaben und Erinnerungen werden von der App selbst verwaltet. Wenn jemand etwas notieren möchte, erkläre die Formulierung „Erinnere mich um 15 Uhr an …“ oder „Neue Aufgabe: …“.",
-    "Bank- und Lexware-Verbindungen sind noch nicht verfügbar.",
-    userName ? `Die Nutzerin heißt ${userName}.` : "",
-    `Aktueller Zeitpunkt (Server): ${now.toISOString()}.`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+/** Feste Persönlichkeit von JARVIS. */
+const PERSONA = [
+  "Du bist JARVIS, ein eleganter, höflicher und leicht humorvoller persönlicher KI-Assistent – inspiriert von JARVIS aus Iron Man.",
+  "Antworte auf Deutsch und sieze die Nutzerin, sofern sie nichts anderes wünscht.",
+  "Deine Antworten werden oft laut vorgelesen. Antworte deshalb natürlich und gesprochen klingend, meist in ein bis drei Sätzen. Verwende kein Markdown, keine Aufzählungszeichen, keine Überschriften und keine Emojis. Wird ausdrücklich eine ausführliche Erklärung gewünscht, darfst du länger antworten – dann in gut lesbaren, kurzen Absätzen.",
+  "Aufgaben und Erinnerungen verwaltet die App selbst – du kannst sie nicht anlegen, ändern oder löschen. Möchte die Nutzerin etwas notieren, nenne ihr die Formulierung „Neue Aufgabe: …“ oder „Erinnere mich um 15 Uhr an …“.",
+  "Du hast keinen Internetzugriff und kennst keine aktuellen Nachrichten oder Wetterdaten. Sag das ehrlich, statt etwas zu erfinden.",
+  "Bank- und Lexware-Verbindungen sind noch nicht verfügbar.",
+].join("\n");
+
+function contextPrompt(ctx: AiContext): string {
+  const lines: string[] = [];
+  if (ctx.userName) lines.push(`Die Nutzerin heißt ${ctx.userName}.`);
+  if (ctx.localTime) {
+    lines.push(`Aktuelle Zeit bei der Nutzerin: ${ctx.localTime}${ctx.timeZone ? ` (Zeitzone ${ctx.timeZone})` : ""}.`);
+  }
+  if (ctx.tasks?.length) {
+    const list = ctx.tasks.map((t) => `- ${t.title}${t.remindAt ? ` (Erinnerung ${t.remindAt})` : ""}`).join("\n");
+    lines.push(`Offene Aufgaben der Nutzerin:\n${list}`);
+  } else if (ctx.tasks) {
+    lines.push("Die Nutzerin hat derzeit keine offenen Aufgaben.");
+  }
+  return lines.join("\n");
 }
 
 export function createClaudeProvider(): AiProvider {
@@ -29,25 +40,34 @@ export function createClaudeProvider(): AiProvider {
 
   return {
     name: "claude",
-    async reply(messages, context) {
-      const response = await client.beta.messages.create({
+    async *stream(messages, context) {
+      const stream = client.beta.messages.stream({
         model,
-        max_tokens: 2000,
-        system: systemPrompt(context.userName, context.now),
-        output_config: { effort: "low" }, // kurze Chat-Antworten → schnell & günstig
+        max_tokens: 4000,
+        system: [
+          { type: "text", text: PERSONA },
+          { type: "text", text: contextPrompt(context) || "Keine weiteren Angaben." },
+        ],
+        output_config: { effort: "low" }, // Chat: schnelle, kurze Antworten
         betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
+        fallbacks: "default", // lehnt das Modell ab, übernimmt automatisch ein passendes Ersatzmodell
         messages: messages.map((m) => ({ role: m.role, content: m.text })),
       });
 
-      if (response.stop_reason === "refusal") {
-        return "Dazu kann ich leider nichts sagen. Kann ich Ihnen anders helfen?";
+      let produced = false;
+      for await (const event of stream) {
+        if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+          produced = true;
+          yield event.delta.text;
+        }
       }
-      const text = response.content
-        .map((block) => (block.type === "text" ? block.text : ""))
-        .join("")
-        .trim();
-      return text || "Entschuldigung, ich habe gerade keine Antwort erhalten.";
+
+      const final = await stream.finalMessage();
+      if (final.stop_reason === "refusal" && !produced) {
+        yield "Dazu kann ich leider nichts sagen. Kann ich Ihnen anders helfen?";
+      } else if (!produced) {
+        yield "Entschuldigung, ich habe gerade keine Antwort erhalten.";
+      }
     },
   };
 }

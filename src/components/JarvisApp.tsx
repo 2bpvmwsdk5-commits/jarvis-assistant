@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { describeWhen, formatDate, formatTime, greetingFor, parseCommand, type Command } from "@/lib/commands";
-import { DEFAULT_SETTINGS, type ChatApiResponse, type ChatMessage, type CoreState, type Settings, type Task } from "@/lib/types";
+import { DEFAULT_SETTINGS, type ChatMessage, type CoreState, type Settings, type Task } from "@/lib/types";
 import { useIsClient, usePersistentState } from "@/hooks/usePersistentState";
 import { useSpeechRecognition, useSpeechSynthesis } from "@/hooks/useSpeech";
 import { AICore, STATE_LABEL } from "./AICore";
@@ -69,6 +69,11 @@ export function JarvisApp() {
       setMessages((prev) => [...prev, msg].slice(-MAX_STORED_MESSAGES));
       return msg;
     },
+    [setMessages],
+  );
+
+  const updateMessage = useCallback(
+    (id: string, text: string) => setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, text } : m))),
     [setMessages],
   );
 
@@ -182,25 +187,68 @@ export function JarvisApp() {
       }
 
       setThinking(true);
+      let replyId: string | null = null;
       try {
         const history = [...messagesRef.current, { role: "user" as const, text }]
           .slice(-20)
           .map((m) => ({ role: m.role === "jarvis" ? ("assistant" as const) : ("user" as const), text: m.text }));
+        const now = new Date();
         const res = await fetch("/api/chat", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: history, userName: settings.userName }),
+          headers: { "Content-Type": "application/json", "x-jarvis-code": settings.accessCode },
+          body: JSON.stringify({
+            messages: history,
+            userName: settings.userName,
+            localTime: `${formatDate(now)}, ${formatTime(now)} Uhr`,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            tasks: tasks
+              .filter((t) => !t.done)
+              .slice(0, 30)
+              .map((t) => ({ title: t.title, remindAt: t.remindAt ? describeWhen(new Date(t.remindAt), now) : undefined })),
+          }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as ChatApiResponse;
-        jarvisSays(data.reply);
+
+        if (res.status === 401) {
+          jarvisSays(
+            settings.accessCode
+              ? "Der Zugangscode stimmt leider nicht. Bitte prüfen Sie ihn in den Einstellungen."
+              : "Für mein KI-Modul brauche ich einen Zugangscode. Bitte tragen Sie ihn in den Einstellungen ein.",
+          );
+          return;
+        }
+        if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+        // Antwort Stück für Stück lesen und sofort anzeigen
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let reply = "";
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          reply += decoder.decode(value, { stream: true });
+          if (!reply.trim()) continue;
+          if (!replyId) {
+            setThinking(false);
+            replyId = addMessage("jarvis", reply).id;
+          } else {
+            updateMessage(replyId, reply);
+          }
+        }
+        reply = (reply + decoder.decode()).trim();
+        if (!reply) throw new Error("Leere Antwort");
+        if (replyId) updateMessage(replyId, reply);
+        else addMessage("jarvis", reply);
+        say(reply);
       } catch {
-        jarvisSays("Verbindung zum Kernsystem unterbrochen. Bitte versuchen Sie es gleich noch einmal.");
+        const msg = "Verbindung zum Kernsystem unterbrochen. Bitte versuchen Sie es gleich noch einmal.";
+        if (replyId) updateMessage(replyId, msg);
+        else addMessage("jarvis", msg);
+        say(msg);
       } finally {
         setThinking(false);
       }
     },
-    [addMessage, jarvisSays, runCommand, settings.userName, tts],
+    [addMessage, updateMessage, jarvisSays, say, runCommand, settings.userName, settings.accessCode, tasks, tts],
   );
 
   const stt = useSpeechRecognition(handleUserInput);

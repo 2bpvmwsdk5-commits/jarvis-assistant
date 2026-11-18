@@ -3,9 +3,9 @@
 Ein futuristischer, persönlicher Assistent im Lila-Design – inspiriert von JARVIS aus Iron Man.
 Läuft im Browser auf **iPhone, iPad und Desktop**.
 
-![Version](https://img.shields.io/badge/Version-1.0-a855f7)
+![Version](https://img.shields.io/badge/Version-1.1-a855f7)
 
-## Was JARVIS 1.0 kann
+## Was JARVIS kann
 
 | Funktion                | So geht's                                                                  |
 | ----------------------- | -------------------------------------------------------------------------- |
@@ -49,15 +49,26 @@ npm start          # fertige Version starten
 ## Echte KI (Claude) aktivieren – optional
 
 Ohne Einstellungen nutzt JARVIS ein **lokales Modul** (funktioniert sofort, kostenlos).
-Für richtige KI-Antworten:
+Mit Claude beantwortet JARVIS fast jede Frage – Wort für Wort live, und er kennt
+Uhrzeit sowie Ihre offenen Aufgaben („Was steht heute an?“).
 
-1. Datei `.env.example` kopieren und `.env.local` nennen.
-2. Darin eintragen:
-   ```
-   JARVIS_AI_PROVIDER=claude
-   ANTHROPIC_API_KEY=ihr-schlüssel
-   ```
-3. Server neu starten.
+Dafür werden drei Werte benötigt:
+
+| Name                 | Wert                                                    |
+| -------------------- | ------------------------------------------------------- |
+| `JARVIS_AI_PROVIDER` | `claude`                                                |
+| `ANTHROPIC_API_KEY`  | Ihr Schlüssel von https://platform.claude.com           |
+| `JARVIS_ACCESS_CODE` | Ein selbst ausgedachter Zugangscode (z. B. `Lila-Kern-2026`) |
+
+- **Online (Netlify):** Site configuration → Environment variables → die drei Werte anlegen →
+  danach unter „Deploys“ → „Trigger deploy“ neu veröffentlichen.
+- **Lokal:** `.env.example` zu `.env.local` kopieren, Werte eintragen, Server neu starten.
+
+Anschließend in JARVIS: Zahnrad → System → **Zugangscode** eingeben (einmal pro Gerät).
+
+> 💶 Claude kostet je nach Nutzung (meist wenige Cent pro Gespräch). Ohne Zugangscode
+> bleibt Claude aus Sicherheitsgründen deaktiviert. Tipp: In der Claude-Konsole ein
+> monatliches Ausgabenlimit festlegen.
 
 > 🔒 **Sicherheit:** `.env.local` wird nie ins Repository hochgeladen. Der Schlüssel bleibt auf
 > dem Server und erreicht nie den Browser. Beim Hosting (z. B. Vercel) tragen Sie die Werte
