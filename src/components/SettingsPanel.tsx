@@ -128,15 +128,15 @@ export function SettingsPanel({
                 className="input"
                 type="password"
                 value={settings.geminiKey}
-                onChange={(e) => onChange({ geminiKey: e.target.value.replace(/\s/g, "").slice(0, 100) })}
+                onChange={(e) => onChange({ geminiKey: e.target.value.replace(/\s/g, "").slice(0, 300) })}
                 placeholder="AIza…"
                 autoComplete="off"
                 spellCheck={false}
               />
             </label>
             {settings.geminiKey && (
-              <p className={settings.geminiKey.length >= 20 ? "install-ok" : "hint hint--error"}>
-                {settings.geminiKey.length >= 20
+              <p className={settings.geminiKey.length >= 10 ? "install-ok" : "hint hint--error"}>
+                {settings.geminiKey.length >= 10
                   ? "✓ Schlüssel gespeichert (nur auf diesem Gerät). Stellen Sie JARVIS eine Frage zum Testen."
                   : "Der Schlüssel scheint unvollständig – bitte ganz kopieren."}
               </p>
@@ -351,7 +351,7 @@ export function SettingsPanel({
               <b>
                 {settings.deviceAi && deviceAi.status === "ready"
                   ? "KI im Gerät (Llama 3.2)"
-                  : settings.geminiKey.length >= 20
+                  : settings.geminiKey.length >= 10
                     ? "Gemini (Google, kostenlos)"
                   : status === null
                   ? "…"
@@ -375,7 +375,7 @@ export function SettingsPanel({
             )}
             <div className="status-row">
               <span>Version</span>
-              <b>2.1</b>
+              <b>2.1.1</b>
             </div>
             <div className="settings__actions">
               <button className="btn btn--ghost" onClick={onClearChat}>

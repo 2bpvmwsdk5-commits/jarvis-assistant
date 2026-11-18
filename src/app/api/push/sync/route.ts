@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { isAccessCodeValid } from "@/lib/ai";
 import { getKeyValueStore } from "@/lib/push/store";
 import { deviceKey, saveDevice, validateDeviceId, validatePayload } from "@/lib/push/sync";
 
@@ -11,9 +10,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  if (!isAccessCodeValid(request.headers.get("x-jarvis-code"))) {
-    return NextResponse.json({ error: "access_code" }, { status: 401 });
-  }
+  // Kein Zugangscode nötig: Benachrichtigungen kosten nichts, die Daten werden streng geprüft
+  // und begrenzt, und Mitteilungen gehen nur an das Gerät, das sich selbst angemeldet hat.
   const payload = validatePayload(await request.json().catch(() => null));
   if (!payload) return NextResponse.json({ error: "Ungültige Daten." }, { status: 400 });
   if (payload.subscriptionInvalid) {

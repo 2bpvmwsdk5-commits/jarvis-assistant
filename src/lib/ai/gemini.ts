@@ -15,9 +15,13 @@ import type { AiProvider } from "./provider";
 const DEFAULT_MODEL = "gemini-flash-lite-latest";
 const FALLBACK_MODEL = "gemini-flash-latest";
 
-/** Grobe Formprüfung eines Gemini-Schlüssels (z. B. „AIza…“). */
+/**
+ * Grobe Prüfung eines Gemini-Schlüssels. Bewusst großzügig: Google vergibt Schlüssel
+ * in verschiedenen Formaten (z. B. „AIza…“) – ob er gültig ist, entscheidet Google.
+ * Nur sichtbare ASCII-Zeichen (für den HTTP-Header), 10–300 Zeichen.
+ */
 export function looksLikeGeminiKey(key: string | null | undefined): key is string {
-  return typeof key === "string" && /^[A-Za-z0-9_-]{20,100}$/.test(key.trim());
+  return typeof key === "string" && /^[\x21-\x7E]{10,300}$/.test(key.trim());
 }
 
 /**

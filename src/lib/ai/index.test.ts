@@ -59,3 +59,14 @@ describe("Zugangscode", () => {
     expect(isAccessCodeValid(null)).toBe(false);
   });
 });
+
+describe("Eigener Gemini-Schlüssel", () => {
+  it("akzeptiert verschiedene Schlüsselformate", async () => {
+    const { looksLikeGeminiKey } = await import("./gemini");
+    expect(looksLikeGeminiKey("AIzaSyA1b2C3d4E5f6G7h8I9j0KlMnOpQrStUvW")).toBe(true);
+    expect(looksLikeGeminiKey("AQ.Ab8RN6Lx_neues-Format.mit.Punkten")).toBe(true);
+    expect(looksLikeGeminiKey("kurz")).toBe(false);
+    expect(looksLikeGeminiKey("mit Leerzeichen innen drin 12345")).toBe(false);
+    expect(looksLikeGeminiKey("Umlaut-ä-geht-nicht-1234567890")).toBe(false);
+  });
+});

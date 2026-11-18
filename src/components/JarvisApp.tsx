@@ -485,9 +485,11 @@ export function JarvisApp() {
 
           if (res.status === 401) {
             jarvisSays(
-              settings.accessCode
-                ? "Der Zugangscode stimmt leider nicht. Bitte prüfen Sie ihn in den Einstellungen."
-                : "Für mein KI-Modul brauche ich einen Zugangscode. Bitte tragen Sie ihn in den Einstellungen ein.",
+              settings.geminiKey
+                ? "Ihr Gemini-Schlüssel hat ein ungewöhnliches Format. Bitte kopieren Sie ihn bei Google noch einmal und fügen Sie ihn unter Zahnrad → KI-Schlüssel neu ein."
+                : settings.accessCode
+                  ? "Der Zugangscode stimmt leider nicht. Bitte prüfen Sie ihn in den Einstellungen."
+                  : "Für mein KI-Modul brauche ich einen kostenlosen Gemini-Schlüssel. Tippen Sie auf das Zahnrad und dann auf „KI-Schlüssel“ – dort steht, wie es geht.",
             );
             return;
           }
