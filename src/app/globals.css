@@ -1664,6 +1664,10 @@ select.input option {
   overflow-wrap: anywhere;
 }
 
+.hint--error {
+  color: #f5d0fe;
+}
+
 .install-ok {
   margin: 0;
   color: var(--lavender-soft);

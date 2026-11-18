@@ -3,7 +3,7 @@
 Ein futuristischer, persönlicher Assistent im Lila-Design – inspiriert von JARVIS aus Iron Man.
 Läuft im Browser auf **iPhone, iPad und Desktop**.
 
-![Version](https://img.shields.io/badge/Version-1.5-a855f7)
+![Version](https://img.shields.io/badge/Version-2.0-a855f7)
 
 ## Was JARVIS kann
 
@@ -62,6 +62,24 @@ npm run build      # fertige Version bauen
 npm start          # fertige Version starten
 ```
 
+## JARVIS meldet sich von selbst (Benachrichtigungen & Morgenbericht)
+
+Zahnrad → **Benachrichtigungen** → „Benachrichtigungen aktivieren“. Danach kommen Erinnerungen
+und abgelaufene Timer als Mitteilung – **auch wenn JARVIS geschlossen ist**.
+
+- **Morgenbericht:** im selben Bereich einschalten, Uhrzeit und Stadt eintragen. Jeden Morgen kommt
+  dann eine Mitteilung mit Wetter, heutigen Erinnerungen, offenen Aufgaben und dem nächsten Countdown.
+- **iPhone/iPad:** funktioniert nur in der **installierten App** (Home-Bildschirm), ab iOS/iPadOS 16.4.
+- Technik: Ein Netlify-„Taktgeber“ (`netlify/functions/jarvis-scheduler.mts`) prüft jede Minute,
+  was fällig ist; Daten liegen im kostenlosen Netlify-Blobs-Speicher. Es muss nichts eingerichtet werden.
+- Wetter: [Open-Meteo](https://open-meteo.com) (kostenlos, ohne Anmeldung).
+
+## Gedächtnis
+
+„Merke dir, dass ich Katzen mag“ · „Was weißt du über mich?“ · „Vergiss das mit den Katzen“.
+Gemerktes bleibt auf dem Gerät und wird der KI als Hintergrundwissen mitgegeben
+(Liste und Löschen unter Zahnrad → Gedächtnis).
+
 ## Echte KI kostenlos: Google Gemini (empfohlen)
 
 Funktioniert auf jedem Gerät (auch älteren iPads), da die KI bei Google läuft.
@@ -73,6 +91,7 @@ Funktioniert auf jedem Gerät (auch älteren iPads), da die KI bei Google läuft
 3. Deploys → **Trigger deploy** → Deploy site.
 
 Fertig – unter Zahnrad → System steht dann „KI-Modul: Gemini (Google, kostenlos)“.
+Mit Gemini kann JARVIS bei Bedarf auch **im Internet nachschlagen** (Google-Suche).
 
 > Hinweise: Das Gratis-Kontingent ist begrenzt (Anfragen pro Minute/Tag). Ist es aufgebraucht,
 > sagt JARVIS Bescheid; Timer, Aufgaben und Erinnerungen funktionieren immer. Bei kostenlosen

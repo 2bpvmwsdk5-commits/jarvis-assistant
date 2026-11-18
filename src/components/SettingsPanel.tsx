@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { ChatApiStatus, Memory, Settings } from "@/lib/types";
 import type { useInstall } from "@/hooks/useInstall";
 import type { useDeviceAi } from "@/hooks/useDeviceAi";
+import type { usePush } from "@/hooks/usePush";
 import { CloseIcon, TrashIcon, VolumeIcon } from "./Icons";
 
 interface SettingsPanelProps {
@@ -14,6 +15,8 @@ interface SettingsPanelProps {
   installer: ReturnType<typeof useInstall>;
   deviceAi: ReturnType<typeof useDeviceAi>;
   memories: Memory[];
+  push: ReturnType<typeof usePush>;
+  onEnablePush: () => void;
   onDeleteMemory: (id: string) => void;
   onChange: (patch: Partial<Settings>) => void;
   onTestVoice: () => void;
@@ -37,6 +40,8 @@ export function SettingsPanel({
   deviceAi,
   memories,
   onDeleteMemory,
+  push,
+  onEnablePush,
   onChange,
   onTestVoice,
   onClearChat,
@@ -97,6 +102,73 @@ export function SettingsPanel({
               checked={settings.greetingEnabled}
               onChange={(v) => onChange({ greetingEnabled: v })}
             />
+          </fieldset>
+
+          <fieldset className="settings__group">
+            <legend>Benachrichtigungen</legend>
+            {!push.supported || (installer.ios && !installer.standalone) ? (
+              <p className="hint">
+                {installer.ios
+                  ? "Auf iPhone und iPad funktionieren Benachrichtigungen nur in der installierten App: JARVIS über „Teilen → Zum Home-Bildschirm“ hinzufügen und von dort öffnen."
+                  : "Dieser Browser unterstützt keine Benachrichtigungen."}
+              </p>
+            ) : push.subscribed ? (
+              <>
+                <p className="install-ok">✓ Aktiv – Erinnerungen und Timer melden sich auch bei geschlossener App.</p>
+                <div className="settings__actions">
+                  <button className="btn btn--ghost" onClick={push.sendTest} disabled={push.busy}>
+                    Test senden
+                  </button>
+                  <button className="btn btn--ghost" onClick={push.disable} disabled={push.busy}>
+                    Ausschalten
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="hint">
+                  JARVIS meldet sich mit Erinnerungen, Timern und dem Morgenbericht – auch wenn die App geschlossen ist.
+                </p>
+                <button className="btn btn--primary" onClick={onEnablePush} disabled={push.busy}>
+                  {push.busy ? "Einen Moment …" : "Benachrichtigungen aktivieren"}
+                </button>
+              </>
+            )}
+            {push.info && <p className="install-ok">{push.info}</p>}
+            {push.error && <p className="hint hint--error">{push.error}</p>}
+
+            <Toggle
+              label="Morgenbericht"
+              checked={settings.briefingEnabled}
+              onChange={(v) => onChange({ briefingEnabled: v })}
+            />
+            {settings.briefingEnabled && (
+              <>
+                <label className="field">
+                  <span>Uhrzeit</span>
+                  <input
+                    className="input"
+                    type="time"
+                    value={settings.briefingTime}
+                    onChange={(e) => onChange({ briefingTime: e.target.value || "07:30" })}
+                  />
+                </label>
+                <label className="field">
+                  <span>Stadt für das Wetter (optional)</span>
+                  <input
+                    className="input"
+                    value={settings.briefingCity}
+                    onChange={(e) => onChange({ briefingCity: e.target.value.slice(0, 60) })}
+                    placeholder="z. B. Berlin"
+                    autoComplete="address-level2"
+                  />
+                </label>
+                <p className="hint">
+                  Jeden Morgen: Wetter, heutige Erinnerungen, offene Aufgaben und der nächste Countdown.
+                  {!push.subscribed && " Dafür bitte oben die Benachrichtigungen aktivieren."}
+                </p>
+              </>
+            )}
           </fieldset>
 
           <fieldset className="settings__group">
@@ -262,7 +334,7 @@ export function SettingsPanel({
             )}
             <div className="status-row">
               <span>Version</span>
-              <b>1.5</b>
+              <b>2.0</b>
             </div>
             <div className="settings__actions">
               <button className="btn btn--ghost" onClick={onClearChat}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { describeWhen, formatDate, formatTime, greetingFor, parseCommand, type Command } from "@/lib/commands";
 import {
   DEFAULT_SETTINGS,
@@ -20,6 +20,8 @@ import { useInstall } from "@/hooks/useInstall";
 import { localAnswer } from "@/lib/ai/local";
 import { deviceChat } from "@/lib/ai/device";
 import { useDeviceAi } from "@/hooks/useDeviceAi";
+import { usePush, type PushSyncData } from "@/hooks/usePush";
+import type { PushJob } from "@/lib/push/types";
 import { AICore, STATE_LABEL } from "./AICore";
 import { BootScreen } from "./BootScreen";
 import { ChatPanel } from "./ChatPanel";
@@ -81,6 +83,7 @@ export function JarvisApp() {
 
   const tts = useSpeechSynthesis();
   const installer = useInstall();
+  const push = usePush(settings.accessCode);
   const messagesRef = useRef(messages);
   useEffect(() => {
     messagesRef.current = messages;
@@ -277,6 +280,49 @@ export function JarvisApp() {
     const interval = setInterval(check, 500);
     return () => clearInterval(interval);
   }, [booted, timers, setTimers, pushToast, jarvisSays, settings.userName]);
+
+  /* ───────────── Benachrichtigungen (auch bei geschlossener App) ───────────── */
+
+  const pushData: PushSyncData = useMemo(() => {
+    // Bereits ausgelöste Erinnerungen sind „notified“; Veraltetes ignoriert der Server.
+    const jobs: PushJob[] = [
+      ...tasks
+        .filter((t) => t.remindAt && !t.done && !t.notified)
+        .map((t) => ({
+          id: `r-${t.id}-${t.remindAt}`,
+          kind: "reminder" as const,
+          title: "JARVIS – Erinnerung",
+          body: t.title,
+          at: t.remindAt!,
+        })),
+      ...timers
+        .filter((t) => t.endAt)
+        .map((t) => ({
+          id: `t-${t.id}-${t.endAt}`,
+          kind: "timer" as const,
+          title: "JARVIS – Timer abgelaufen",
+          body: t.label === "Timer" ? `${formatDuration(t.durationMs)} sind um.` : `${t.label}: ${formatDuration(t.durationMs)} sind um.`,
+          at: t.endAt!,
+        })),
+    ];
+    return {
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      userName: settings.userName,
+      jobs,
+      briefing: { enabled: settings.briefingEnabled, time: settings.briefingTime, city: settings.briefingCity },
+      tasks: tasks.filter((t) => !t.done).slice(0, 30).map((t) => ({ title: t.title, remindAt: t.remindAt })),
+      countdowns: countdowns.map((c) => ({ title: c.title, date: c.date })),
+    };
+  }, [tasks, timers, countdowns, settings.userName, settings.briefingEnabled, settings.briefingTime, settings.briefingCity]);
+
+  // Nach jeder Änderung (kurz gebündelt) dem Server melden
+  const pushKey = JSON.stringify(pushData);
+  const syncPush = push.sync;
+  useEffect(() => {
+    if (!push.subscribed) return;
+    const t = setTimeout(() => syncPush(JSON.parse(pushKey) as PushSyncData), 1500);
+    return () => clearTimeout(t);
+  }, [push.subscribed, pushKey, syncPush]);
 
   /* ───────────── Befehle & Chat ───────────── */
 
@@ -687,6 +733,8 @@ export function JarvisApp() {
         installer={installer}
         deviceAi={deviceAi}
         memories={memories}
+        push={push}
+        onEnablePush={() => push.enable(pushData)}
         onDeleteMemory={(id) => setMemories((prev) => prev.filter((m) => m.id !== id))}
         onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))}
         onTestVoice={() =>

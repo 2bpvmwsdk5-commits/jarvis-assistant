@@ -41,7 +41,7 @@ export function AICore({ state, size }: { state: CoreState; size?: string }) {
         <g className="core__ring core__ring--text">
           <text className="core__ring-text">
             <textPath href="#textRing">
-              J.A.R.V.I.S • PERSONAL INTELLIGENCE SYSTEM • VERSION 1.5 • ALL SYSTEMS ONLINE •
+              J.A.R.V.I.S • PERSONAL INTELLIGENCE SYSTEM • VERSION 2.0 • ALL SYSTEMS ONLINE •
               NEURAL CORE ACTIVE •
             </textPath>
           </text>

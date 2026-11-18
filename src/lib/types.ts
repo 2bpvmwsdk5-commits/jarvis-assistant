@@ -27,6 +27,9 @@ export interface Settings {
   greetingEnabled: boolean;
   accessCode: string; // Zugangscode für die KI (falls auf dem Server festgelegt)
   deviceAi: boolean; // experimentell: KI läuft direkt im Gerät (WebGPU)
+  briefingEnabled: boolean; // Morgenbericht als Benachrichtigung
+  briefingTime: string; // „HH:MM“
+  briefingCity: string; // für das Wetter
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -38,6 +41,9 @@ export const DEFAULT_SETTINGS: Settings = {
   greetingEnabled: true,
   accessCode: "",
   deviceAi: false,
+  briefingEnabled: false,
+  briefingTime: "07:30",
+  briefingCity: "",
 };
 
 /** Nachricht, wie sie an die Server-Schnittstelle /api/chat geschickt wird. */

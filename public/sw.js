@@ -5,7 +5,7 @@
  *  - Programmdateien: aus dem Speicher (sie ändern bei jedem Update ihren Namen)
  *  - /api/…:          nie zwischenspeichern
  */
-const CACHE = "jarvis-v1";
+const CACHE = "jarvis-v2";
 const PRECACHE = ["/", "/icon.svg", "/icon-192.png", "/apple-touch-icon.png"];
 
 self.addEventListener("install", (event) => {
@@ -55,6 +55,25 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => cached || Response.error());
       return cached || network;
+    }),
+  );
+});
+
+// Benachrichtigung vom Server (Erinnerung, Timer, Morgenbericht) anzeigen
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "JARVIS", {
+      body: data.body || "",
+      tag: data.tag,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url: data.url || "/" },
     }),
   );
 });
