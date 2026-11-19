@@ -30,7 +30,6 @@ export interface Settings {
   briefingEnabled: boolean; // Morgenbericht als Benachrichtigung
   briefingTime: string; // „HH:MM“
   briefingCity: string; // für das Wetter
-  geminiKey: string; // eigener, kostenloser Gemini-Schlüssel (bleibt auf dem Gerät)
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -45,7 +44,6 @@ export const DEFAULT_SETTINGS: Settings = {
   briefingEnabled: false,
   briefingTime: "07:30",
   briefingCity: "",
-  geminiKey: "",
 };
 
 /** Nachricht, wie sie an die Server-Schnittstelle /api/chat geschickt wird. */

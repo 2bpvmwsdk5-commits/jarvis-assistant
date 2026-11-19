@@ -48,7 +48,7 @@ Der KI-Kern hat **Zustände**: `idle` (ruhig atmend), `listening` (hört zu),
 | Datenspeicher v1 | `localStorage` im Browser (Aufgaben, Einstellungen, Chatverlauf)              |
 | KI-Schnittstelle | Server-Route `/api/chat` mit austauschbarem „Gehirn“ (Provider-Muster)        |
 | KI v1            | Lokales Regelwerk (funktioniert ohne Internet-Schlüssel)                     |
-| KI später        | Claude (Anthropic) – bereits vorbereitet, aktiviert sich durch API-Schlüssel |
+| KI (Cloud)       | Groq (GROQ_API_KEY, serverseitig); Claude als Alternative vorbereitet       |
 | Geheimnisse      | Nur in Umgebungsvariablen (`.env.local`, Hosting-Dashboard) – nie im Code    |
 | Tests            | Vitest für die Logik (Befehlserkennung, lokales Gehirn)                       |
 | Hosting          | Cloud-kompatibel, z. B. Vercel, Netlify, Docker / jeder Node-Server          |
@@ -93,6 +93,7 @@ jarvis-assistant/
 | 1.5 ✅  | Kostenlose Cloud-KI: Google Gemini (Gratis-Kontingent), läuft auf jedem Gerät            |
 | 1.6 ✅  | Gedächtnis („Merke dir …“) und Internetsuche über Gemini                                |
 | 2.0 ✅  | Benachrichtigungen bei geschlossener App, Morgenbericht mit Wetter (Netlify-Taktgeber)   |
+| 2.2 ✅  | Umstellung des KI-Moduls von Gemini auf Groq (gpt-oss), Schlüssel nur serverseitig       |
 | 2.x     | Benutzerkonto & Cloud-Datenbank (Daten auf allen Geräten), Kalender-Anbindung            |
 | 2.x     | Weitere Integrationen (z. B. Wetter, E-Mail) – **Lexware/Bank erst nach Freigabe**       |
 

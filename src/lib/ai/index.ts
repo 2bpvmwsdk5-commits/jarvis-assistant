@@ -1,37 +1,30 @@
 import { timingSafeEqual } from "node:crypto";
 import { createClaudeProvider } from "./claude";
-import { createGeminiProvider } from "./gemini";
+import { createGroqProvider } from "./groq";
 import { localProvider } from "./local";
 import type { AiProvider } from "./provider";
 
 /**
- * Wählt das passende Gehirn anhand der Umgebungsvariablen:
+ * Wählt das passende Gehirn anhand der Umgebungsvariablen (nur auf dem Server):
  *
- *  - Gemini (Google): kostenloses Kontingent. Es genügt, GEMINI_API_KEY zu setzen.
- *  - Claude (Anthropic): kostenpflichtig – nur zusammen mit einem Zugangscode
- *    (JARVIS_ACCESS_CODE), damit niemand mit Ihrer Adresse auf Ihre Kosten chattet.
+ *  - Groq: aktiv, sobald GROQ_API_KEY gesetzt ist (Standard).
+ *  - Claude (Anthropic): nur mit JARVIS_AI_PROVIDER=claude, ANTHROPIC_API_KEY und
+ *    JARVIS_ACCESS_CODE. Fehlt etwas davon, wird stattdessen Groq bzw. das lokale Gehirn genutzt.
  *  - Sonst: das kostenlose lokale Gehirn.
  *
- * JARVIS_AI_PROVIDER kann „gemini“, „claude“ oder „local“ erzwingen.
+ * JARVIS_AI_PROVIDER=local erzwingt das lokale Gehirn.
  */
 export function getProvider(): AiProvider {
   const wanted = (process.env.JARVIS_AI_PROVIDER ?? "").trim().toLowerCase();
-
-  if (wanted === "claude") {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      console.warn("[JARVIS] JARVIS_AI_PROVIDER=claude, aber ANTHROPIC_API_KEY fehlt – nutze lokales Gehirn.");
-    } else if (!getAccessCode()) {
-      console.warn("[JARVIS] Claude ist nur mit JARVIS_ACCESS_CODE erlaubt – nutze lokales Gehirn.");
-    } else {
-      return createClaudeProvider();
-    }
-    return localProvider;
-  }
-
   if (wanted === "local") return localProvider;
 
-  if (process.env.GEMINI_API_KEY) return createGeminiProvider();
-  if (wanted === "gemini") console.warn("[JARVIS] JARVIS_AI_PROVIDER=gemini, aber GEMINI_API_KEY fehlt – nutze lokales Gehirn.");
+  if (wanted === "claude") {
+    if (process.env.ANTHROPIC_API_KEY && getAccessCode()) return createClaudeProvider();
+    console.warn("[JARVIS] Claude ist nicht vollständig eingerichtet (Schlüssel + Zugangscode) – nutze Groq bzw. lokales Gehirn.");
+  }
+
+  if (process.env.GROQ_API_KEY?.trim()) return createGroqProvider();
+  if (wanted === "groq") console.warn("[JARVIS] JARVIS_AI_PROVIDER=groq, aber GROQ_API_KEY fehlt – nutze lokales Gehirn.");
   return localProvider;
 }
 

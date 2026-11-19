@@ -66,8 +66,8 @@ const RULES: Rule[] = [
 ];
 
 const FALLBACKS = [
-  "Dafür brauche ich mein volles KI-Modul. Das ist kostenlos: Tippen Sie oben rechts auf das Zahnrad und dann auf „KI-Schlüssel“ – dort steht in drei Schritten, wie es geht. Aufgaben, Erinnerungen und Timer kann ich schon jetzt für Sie erledigen.",
-  "Gute Frage! Um darauf richtig antworten zu können, aktivieren Sie bitte mein KI-Modul unter Zahnrad → „KI-Schlüssel“ (kostenlos). Sagen Sie „Hilfe“, um zu sehen, was ich schon kann.",
+  "Dafür brauche ich mein volles KI-Modul, das auf dem Server noch nicht eingerichtet ist (Groq-Schlüssel bei Netlify). Aufgaben, Erinnerungen, Timer und Countdowns kann ich aber schon jetzt für Sie erledigen.",
+  "Gute Frage! Um darauf richtig antworten zu können, muss mein KI-Modul (Groq) auf dem Server aktiviert werden. Sagen Sie „Hilfe“, um zu sehen, was ich schon kann.",
 ];
 
 function pick<T>(items: T[]): T {

@@ -28,7 +28,7 @@ interface SettingsPanelProps {
 const PROVIDER_LABEL: Record<string, string> = {
   local: "Lokales Modul (ohne Internet-KI)",
   claude: "Claude (Anthropic)",
-  gemini: "Gemini (Google, kostenlos)",
+  groq: "Groq (gpt-oss)",
 };
 
 export function SettingsPanel({
@@ -105,41 +105,39 @@ export function SettingsPanel({
           </fieldset>
 
           <fieldset className="settings__group">
-            <legend>KI-Schlüssel (kostenlos)</legend>
-            <p className="hint">
-              Damit JARVIS auf alles antworten und im Internet nachsehen kann: kostenlosen Gemini-Schlüssel bei Google
-              holen und hier einfügen.
-            </p>
-            <ol className="install-steps">
-              <li>
-                <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="link">
-                  aistudio.google.com/apikey
-                </a>{" "}
-                öffnen und mit dem Google-Konto anmelden.
-              </li>
-              <li>
-                <b>„Create API key“</b> tippen und den Schlüssel kopieren (beginnt meist mit „AIza“).
-              </li>
-              <li>Hier unten einfügen – fertig. Keine Zahlungsdaten bei Google eingeben.</li>
-            </ol>
-            <label className="field">
-              <span>Gemini-Schlüssel</span>
-              <input
-                className="input"
-                type="password"
-                value={settings.geminiKey}
-                onChange={(e) => onChange({ geminiKey: e.target.value.replace(/\s/g, "").slice(0, 300) })}
-                placeholder="AIza…"
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </label>
-            {settings.geminiKey && (
-              <p className={settings.geminiKey.length >= 10 ? "install-ok" : "hint hint--error"}>
-                {settings.geminiKey.length >= 10
-                  ? "✓ Schlüssel gespeichert (nur auf diesem Gerät). Stellen Sie JARVIS eine Frage zum Testen."
-                  : "Der Schlüssel scheint unvollständig – bitte ganz kopieren."}
+            <legend>KI-Modul</legend>
+            {status === null ? (
+              <p className="hint">Prüfe KI-Modul …</p>
+            ) : status !== "offline" && status.provider === "groq" ? (
+              <p className="install-ok">
+                ✓ Groq ist aktiv – JARVIS beantwortet freie Fragen mit einer leistungsstarken KI. Der Schlüssel liegt
+                sicher auf dem Server.
               </p>
+            ) : status !== "offline" && status.provider === "claude" ? (
+              <p className="install-ok">✓ Claude ist aktiv.</p>
+            ) : (
+              <>
+                <p className="hint">
+                  Das KI-Modul ist noch nicht eingerichtet. Dafür wird der Groq-Schlüssel bei Netlify als
+                  Umgebungsvariable <b>GROQ_API_KEY</b> hinterlegt – er bleibt dort auf dem Server und ist im Browser nie
+                  sichtbar.
+                </p>
+                <ol className="install-steps">
+                  <li>
+                    Schlüssel unter{" "}
+                    <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="link">
+                      console.groq.com/keys
+                    </a>{" "}
+                    erstellen.
+                  </li>
+                  <li>
+                    Bei Netlify: <b>Project configuration → Environment variables</b> → <b>GROQ_API_KEY</b> anlegen.
+                  </li>
+                  <li>
+                    <b>Deploys → Trigger deploy</b> und JARVIS danach neu öffnen.
+                  </li>
+                </ol>
+              </>
             )}
           </fieldset>
 
@@ -278,9 +276,10 @@ export function SettingsPanel({
               einmalig heruntergeladen (ca. 700 MB, am besten im WLAN). Sie ist einfacher als große KIs und kann sich
               irren. Benötigt ein neueres Gerät (iPhone/iPad mit iOS 26 oder einen aktuellen Computer).
             </p>
-            {settings.geminiKey && (
+            {status !== null && status !== "offline" && (status.provider === "groq" || status.provider === "claude") && (
               <p className="install-ok">
-                Nicht nötig – Sie nutzen bereits Gemini (besser und schneller). Diese Funktion bleibt deshalb aus.
+                Nicht nötig – Sie nutzen bereits {status.provider === "groq" ? "Groq" : "Claude"} (besser und schneller).
+                Diese Funktion bleibt deshalb aus.
               </p>
             )}
             <Toggle
@@ -356,8 +355,6 @@ export function SettingsPanel({
               <b>
                 {settings.deviceAi && deviceAi.status === "ready"
                   ? "KI im Gerät (Llama 3.2)"
-                  : settings.geminiKey.length >= 10
-                    ? "Gemini (Google, kostenlos)"
                   : status === null
                   ? "…"
                   : status === "offline"
@@ -380,7 +377,7 @@ export function SettingsPanel({
             )}
             <div className="status-row">
               <span>Version</span>
-              <b>2.1.2</b>
+              <b>2.2</b>
             </div>
             <div className="settings__actions">
               <button className="btn btn--ghost" onClick={onClearChat}>

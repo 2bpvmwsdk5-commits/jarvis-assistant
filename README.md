@@ -3,7 +3,7 @@
 Ein futuristischer, persönlicher Assistent im Lila-Design – inspiriert von JARVIS aus Iron Man.
 Läuft im Browser auf **iPhone, iPad und Desktop**.
 
-![Version](https://img.shields.io/badge/Version-2.1-a855f7)
+![Version](https://img.shields.io/badge/Version-2.2-a855f7)
 
 ## Was JARVIS kann
 
@@ -80,24 +80,23 @@ und abgelaufene Timer als Mitteilung – **auch wenn JARVIS geschlossen ist**.
 Gemerktes bleibt auf dem Gerät und wird der KI als Hintergrundwissen mitgegeben
 (Liste und Löschen unter Zahnrad → Gedächtnis).
 
-## Echte KI kostenlos: Google Gemini (empfohlen)
+## KI-Modul: Groq
 
-Funktioniert auf jedem Gerät (auch älteren iPads), da die KI bei Google läuft.
+JARVIS beantwortet freie Fragen über [Groq](https://groq.com) (OpenAI-kompatible API unter
+`https://api.groq.com/openai/v1`, Modell `openai/gpt-oss-120b`, Ausweich `openai/gpt-oss-20b`).
 
-1. Auf **https://aistudio.google.com/apikey** mit einem Google-Konto anmelden →
-   **„Create API key“** → Schlüssel kopieren. **Keine Zahlungsdaten eingeben** – dann bleibt es kostenlos.
-2. In JARVIS: Zahnrad → **KI-Schlüssel** → Schlüssel einfügen. Fertig.
+1. Schlüssel unter **https://console.groq.com/keys** erstellen.
+2. Bei **Netlify**: Project configuration → Environment variables → **Add a variable** →
+   Key `GROQ_API_KEY`, Value = Ihr Schlüssel.
+3. **Deploys → Trigger deploy → Deploy project**, danach JARVIS neu öffnen.
 
-   *(Alternativ für alle Geräte auf einmal: bei Netlify die Umgebungsvariable `GEMINI_API_KEY` setzen
-   und neu veröffentlichen.)*
+Unter Zahnrad → KI-Modul steht dann „✓ Groq ist aktiv“.
 
-Fertig – unter Zahnrad → System steht dann „KI-Modul: Gemini (Google, kostenlos)“.
-Mit Gemini kann JARVIS bei Bedarf auch **im Internet nachschlagen** (Google-Suche).
-
-> Hinweise: Das Gratis-Kontingent ist begrenzt (Anfragen pro Minute/Tag). Ist es aufgebraucht,
-> sagt JARVIS Bescheid; Timer, Aufgaben und Erinnerungen funktionieren immer. Bei kostenlosen
-> Konten darf Google die Chat-Inhalte zur Verbesserung seiner Dienste verwenden – daher keine
-> sensiblen Daten (Passwörter, Bankdaten, Gesundheitsdaten) eingeben.
+> 🔒 Der Schlüssel wird ausschließlich auf dem Server (Netlify Function `/api/chat`) gelesen und
+> nie an den Browser geschickt. Optional: `GROQ_MODEL` legt ein anderes Modell fest – praktisch,
+> falls Groq Modelle umbenennt oder abschaltet (aktuelle Liste: console.groq.com/docs/models).
+> Ist zusätzlich `JARVIS_ACCESS_CODE` gesetzt, muss dieser Code in JARVIS unter Zahnrad → System
+> eingetragen werden – das schützt Ihr Groq-Kontingent vor Fremden.
 
 ## KI im Gerät – kostenlos (Experiment)
 

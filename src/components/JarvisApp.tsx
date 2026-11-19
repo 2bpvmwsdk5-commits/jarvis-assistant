@@ -20,6 +20,7 @@ import { useInstall } from "@/hooks/useInstall";
 import { localAnswer } from "@/lib/ai/local";
 import { deviceChat } from "@/lib/ai/device";
 import { useDeviceAi } from "@/hooks/useDeviceAi";
+import { useServerAi } from "@/hooks/useServerAi";
 import { usePush, type PushSyncData } from "@/hooks/usePush";
 import type { PushJob } from "@/lib/push/types";
 import { AICore, STATE_LABEL } from "./AICore";
@@ -137,8 +138,9 @@ export function JarvisApp() {
       "Beim letzten Laden wurde JARVIS neu gestartet – vermutlich reicht der Speicher dieses Geräts nicht.",
     );
   }, [setSettings, pushToast]);
-  // Mit Gemini-Schlüssel wird die Geräte-KI nicht geladen (spart Speicher, Gemini ist besser).
-  const deviceAi = useDeviceAi(settings.deviceAi && !settings.geminiKey, booted, onDeviceAiCrash);
+  // Ist auf dem Server eine Cloud-KI (Groq) aktiv, wird die Geräte-KI nicht geladen (spart Speicher).
+  const serverAi = useServerAi();
+  const deviceAi = useDeviceAi(settings.deviceAi && serverAi.loaded && !serverAi.hasCloudAi, booted, onDeviceAiCrash);
 
   /* ───────────── Aufgaben ───────────── */
 
@@ -440,8 +442,8 @@ export function JarvisApp() {
       let replyId: string | null = null;
       let unreachable = false; // Anfrage kam gar nicht beim Server an (z. B. kein Internet)
       let handled = false; // Antwort wurde bereits anders gegeben (z. B. Hinweis zum Schlüssel)
-      // Mit Gemini-Schlüssel hat Gemini Vorrang – die Geräte-KI ist nur ein Experiment.
-      const useDevice = deviceAi.status === "ready" && !settings.geminiKey;
+      // Cloud-KI auf dem Server (Groq) hat Vorrang – die Geräte-KI ist nur ein Experiment.
+      const useDevice = deviceAi.status === "ready" && !serverAi.hasCloudAi;
       try {
         const history = [...messagesRef.current, { role: "user" as const, text }]
           .slice(-20)
@@ -450,14 +452,13 @@ export function JarvisApp() {
         const localTime = `${formatDate(now)}, ${formatTime(now)} Uhr`;
         const openTasks = tasks.filter((t) => !t.done).slice(0, 30);
 
-        /** Antwort vom Server (Gemini/Claude/eingebautes Gehirn). null = bereits beantwortet. */
+        /** Antwort vom Server (Groq/Claude/eingebautes Gehirn). null = bereits beantwortet. */
         const fromServer = async (): Promise<AsyncIterable<string> | null> => {
           const res = await fetch("/api/chat", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "x-jarvis-code": settings.accessCode,
-              ...(settings.geminiKey ? { "x-gemini-key": settings.geminiKey.trim() } : {}),
             },
             body: JSON.stringify({
               messages: history,
@@ -478,11 +479,9 @@ export function JarvisApp() {
           if (res.status === 401) {
             handled = true;
             jarvisSays(
-              settings.geminiKey
-                ? "Ihr Gemini-Schlüssel hat ein ungewöhnliches Format. Bitte kopieren Sie ihn bei Google noch einmal und fügen Sie ihn unter Zahnrad → KI-Schlüssel neu ein."
-                : settings.accessCode
-                  ? "Der Zugangscode stimmt leider nicht. Bitte prüfen Sie ihn in den Einstellungen."
-                  : "Für mein KI-Modul brauche ich einen kostenlosen Gemini-Schlüssel. Tippen Sie auf das Zahnrad und dann auf „KI-Schlüssel“ – dort steht, wie es geht.",
+              settings.accessCode
+                ? "Der Zugangscode stimmt leider nicht. Bitte prüfen Sie ihn unter Zahnrad → System."
+                : "Für mein KI-Modul brauche ich den Zugangscode, der bei Netlify als JARVIS_ACCESS_CODE festgelegt ist. Bitte tragen Sie ihn unter Zahnrad → System ein.",
             );
             return null;
           }
@@ -552,7 +551,7 @@ export function JarvisApp() {
         setThinking(false);
       }
     },
-    [addMessage, updateMessage, jarvisSays, say, runCommand, settings.userName, settings.accessCode, settings.geminiKey, tasks, tts, deviceAi.status, memories],
+    [addMessage, updateMessage, jarvisSays, say, runCommand, settings.userName, settings.accessCode, tasks, tts, deviceAi.status, serverAi.hasCloudAi, memories],
   );
 
   const stt = useSpeechRecognition(handleUserInput);

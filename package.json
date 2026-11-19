@@ -1,6 +1,6 @@
 {
   "name": "jarvis-assistant",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "private": true,
   "description": "JARVIS – persönlicher KI-Assistent im Lila-Design",
   "scripts": {
@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.10.0",
-    "@google/genai": "2.32.0",
     "@mlc-ai/web-llm": "0.2.87",
     "@netlify/blobs": "11.1.7",
     "next": "^16.4.6",
