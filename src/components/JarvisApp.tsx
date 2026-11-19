@@ -137,7 +137,8 @@ export function JarvisApp() {
       "Beim letzten Laden wurde JARVIS neu gestartet – vermutlich reicht der Speicher dieses Geräts nicht.",
     );
   }, [setSettings, pushToast]);
-  const deviceAi = useDeviceAi(settings.deviceAi, booted, onDeviceAiCrash);
+  // Mit Gemini-Schlüssel wird die Geräte-KI nicht geladen (spart Speicher, Gemini ist besser).
+  const deviceAi = useDeviceAi(settings.deviceAi && !settings.geminiKey, booted, onDeviceAiCrash);
 
   /* ───────────── Aufgaben ───────────── */
 
@@ -438,7 +439,9 @@ export function JarvisApp() {
       setThinking(true);
       let replyId: string | null = null;
       let unreachable = false; // Anfrage kam gar nicht beim Server an (z. B. kein Internet)
-      const useDevice = deviceAi.status === "ready";
+      let handled = false; // Antwort wurde bereits anders gegeben (z. B. Hinweis zum Schlüssel)
+      // Mit Gemini-Schlüssel hat Gemini Vorrang – die Geräte-KI ist nur ein Experiment.
+      const useDevice = deviceAi.status === "ready" && !settings.geminiKey;
       try {
         const history = [...messagesRef.current, { role: "user" as const, text }]
           .slice(-20)
@@ -447,19 +450,8 @@ export function JarvisApp() {
         const localTime = `${formatDate(now)}, ${formatTime(now)} Uhr`;
         const openTasks = tasks.filter((t) => !t.done).slice(0, 30);
 
-        let chunks: AsyncIterable<string>;
-        if (useDevice) {
-          // KI direkt im Gerät – ganz ohne Server
-          chunks = deviceChat(
-            history.map((m) => ({ role: m.role, content: m.text })),
-            {
-              userName: settings.userName,
-              localTime,
-              tasks: openTasks.map((t) => t.title),
-              memories: memories.map((m) => m.text),
-            },
-          );
-        } else {
+        /** Antwort vom Server (Gemini/Claude/eingebautes Gehirn). null = bereits beantwortet. */
+        const fromServer = async (): Promise<AsyncIterable<string> | null> => {
           const res = await fetch("/api/chat", {
             method: "POST",
             headers: {
@@ -484,6 +476,7 @@ export function JarvisApp() {
           });
 
           if (res.status === 401) {
+            handled = true;
             jarvisSays(
               settings.geminiKey
                 ? "Ihr Gemini-Schlüssel hat ein ungewöhnliches Format. Bitte kopieren Sie ihn bei Google noch einmal und fügen Sie ihn unter Zahnrad → KI-Schlüssel neu ein."
@@ -491,10 +484,39 @@ export function JarvisApp() {
                   ? "Der Zugangscode stimmt leider nicht. Bitte prüfen Sie ihn in den Einstellungen."
                   : "Für mein KI-Modul brauche ich einen kostenlosen Gemini-Schlüssel. Tippen Sie auf das Zahnrad und dann auf „KI-Schlüssel“ – dort steht, wie es geht.",
             );
-            return;
+            return null;
           }
           if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
-          chunks = readTextStream(res.body);
+          return readTextStream(res.body);
+        };
+
+        let chunks: AsyncIterable<string>;
+        if (useDevice) {
+          // KI direkt im Gerät – scheitert sie, bevor etwas kam, fragt JARVIS automatisch den Server
+          const device = deviceChat(history.map((m) => ({ role: m.role, content: m.text })), {
+            userName: settings.userName,
+            localTime,
+            tasks: openTasks.map((t) => t.title),
+            memories: memories.map((m) => m.text),
+          });
+          chunks = (async function* () {
+            let produced = false;
+            try {
+              for await (const piece of device) {
+                produced = true;
+                yield piece;
+              }
+            } catch (error) {
+              if (produced) throw error;
+              console.warn("[JARVIS] Geräte-KI fehlgeschlagen – frage den Server:", error);
+              const fallback = await fromServer();
+              if (fallback) yield* fallback;
+            }
+          })();
+        } else {
+          const server = await fromServer();
+          if (!server) return;
+          chunks = server;
         }
 
         // Antwort Stück für Stück anzeigen
@@ -510,11 +532,13 @@ export function JarvisApp() {
           }
         }
         reply = reply.trim();
+        if (handled) return;
         if (!reply) throw new Error("Leere Antwort");
         if (replyId) updateMessage(replyId, reply);
         else addMessage("jarvis", reply);
         say(reply);
       } catch (error) {
+        if (handled) return;
         if (useDevice) console.warn("[JARVIS] Geräte-KI:", error);
         const msg = useDevice
           ? "Meine Geräte-KI hatte gerade ein Problem. Bitte versuchen Sie es noch einmal."

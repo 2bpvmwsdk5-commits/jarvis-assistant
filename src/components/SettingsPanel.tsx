@@ -278,6 +278,11 @@ export function SettingsPanel({
               einmalig heruntergeladen (ca. 700 MB, am besten im WLAN). Sie ist einfacher als große KIs und kann sich
               irren. Benötigt ein neueres Gerät (iPhone/iPad mit iOS 26 oder einen aktuellen Computer).
             </p>
+            {settings.geminiKey && (
+              <p className="install-ok">
+                Nicht nötig – Sie nutzen bereits Gemini (besser und schneller). Diese Funktion bleibt deshalb aus.
+              </p>
+            )}
             <Toggle
               label="KI im Gerät verwenden"
               checked={settings.deviceAi}
@@ -375,7 +380,7 @@ export function SettingsPanel({
             )}
             <div className="status-row">
               <span>Version</span>
-              <b>2.1.1</b>
+              <b>2.1.2</b>
             </div>
             <div className="settings__actions">
               <button className="btn btn--ghost" onClick={onClearChat}>
